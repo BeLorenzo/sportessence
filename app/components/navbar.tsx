@@ -17,65 +17,64 @@ interface NavbarProps {
 export default function Navbar({ initialRole }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [role, setRole] = useState<UserRole>(initialRole);
-  const [isExtraOpen, setIsExtraOpen] = useState(false);
+  const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
   
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const isCheckingRef = useRef(false);
 
-  // 1. NAVIGAZIONE: Chiude tutto quando la pagina cambia
+  // Sincronizzazione ruolo
+  useEffect(() => {
+    setRole(initialRole);
+  }, [initialRole]);
+
+  // Reset menu al cambio pagina
   useEffect(() => {
     setIsOpen(false);
-    setIsExtraOpen(false);
+    setIsProjectsOpen(false);
   }, [pathname]);
 
-  // 2. CLICK OUTSIDE: Funziona solo su Desktop
+  // Click outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (isOpen) return; // Se siamo in mobile, ignora questo controllo
-
+      if (isOpen) return;
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsExtraOpen(false);
+        setIsProjectsOpen(false);
       }
     }
-    
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // 3. AUTH CHECK
+  // Auth check
   useEffect(() => {
-    const checkUser = async () => {
-      if (isCheckingRef.current) return;
-      isCheckingRef.current = true;
-
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setRole("guest");
-          return;
-        }
-        const { data: adminRow } = await supabase
-          .from('admins_whitelist')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-        setRole(adminRow ? "admin" : "user");
-      } finally {
-        isCheckingRef.current = false;
+    const fetchRoleOnLogin = async () => {
+      router.refresh();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setRole("guest");
+        return;
       }
+      const { data: adminRow } = await supabase
+        .from('admins_whitelist')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      setRole(adminRow ? "admin" : "user");
     };
 
-    if (role === "guest") checkUser();
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') setRole("guest");
+      if (event === 'SIGNED_OUT') {
+        setRole("guest");
+        router.refresh();
+      } else if (event === 'SIGNED_IN') {
+        fetchRoleOnLogin();
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [supabase, router]);
 
   const handleLogout = async () => {
     try {
@@ -87,6 +86,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
         });
       }
       setRole("guest");
+      router.refresh();
       window.location.href = "/";
     } catch (err) {
       console.error("Errore logout:", err);
@@ -94,12 +94,14 @@ export default function Navbar({ initialRole }: NavbarProps) {
     }
   };
 
-  const navLinks: Record<UserRole, { name: string; href: string; isExtra?: boolean }[]> = {
+  // --- CONFIGURAZIONE LINK ---
+  // "Progetti" è ora l'unico punto di accesso per Lezioni e Psicomotricità
+  const navLinks: Record<UserRole, { name: string; href: string; isProject?: boolean }[]> = {
     guest: [
       { name: "Home", href: "/" },
       { name: "Chi siamo", href: "/About" },
       { name: "Campi Estivi", href: "/Campi" },
-      { name: "EXTRA", href: "#", isExtra: true },
+      { name: "Progetti", href: "#", isProject: true }, // Contiene Lezioni e Psicomotricità
       { name: "Info utili", href: "/Info" },
       { name: "Login", href: "/Login" },
       { name: "Registrazione", href: "/Registrazione" },
@@ -108,7 +110,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
       { name: "Home", href: "/" },
       { name: "Chi siamo", href: "/About" },
       { name: "Campi Estivi", href: "/Campi" },
-      { name: "EXTRA", href: "#", isExtra: true },
+      { name: "Progetti", href: "#", isProject: true },
       { name: "Info utili", href: "/Info" },
       { name: "Iscrizioni", href: "/Iscrizioni" },
       { name: "Profilo", href: "/Utente" },
@@ -116,7 +118,6 @@ export default function Navbar({ initialRole }: NavbarProps) {
     admin: [
       { name: "Dashboard", href: "/admin/Dashboard" },
       { name: "Campi Estivi", href: "/admin/Campi" },
-      { name: "EXTRA", href: "#", isExtra: true },
       { name: "Pagamenti", href: "/admin/Pagamenti" },
     ],
   };
@@ -141,12 +142,13 @@ export default function Navbar({ initialRole }: NavbarProps) {
         {/* --- MENU DESKTOP --- */}
         <div className="hidden lg:flex flex-nowrap items-center gap-4 xl:gap-6 uppercase text-[clamp(13px,1.8vw,16px)]">
           {navLinks[role].map((link) => {
-            if (link.isExtra) {
+            if (link.isProject) {
               return (
                 <div key={link.name} className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setIsExtraOpen(!isExtraOpen)}
-                    className={`flex items-center gap-1 transition hover:underline hover:font-semibold hover:scale-105 ${
+                    onClick={() => setIsProjectsOpen(!isProjectsOpen)}
+                    className={`flex items-center gap-1 transition hover:underline uppercase hover:font-semibold hover:scale-105 ${
+                      // Evidenzia "Progetti" se siamo in una delle pagine figlie
                       pathname === "/Psicomotricita" || pathname === "/LezioniCalcio"
                         ? "text-white underline underline-offset-4 decoration-2 font-bold scale-105"
                         : "text-white"
@@ -155,12 +157,20 @@ export default function Navbar({ initialRole }: NavbarProps) {
                     {link.name}
                     <ChevronDown 
                       size={16} 
-                      className={`transition-transform duration-200 ${isExtraOpen ? 'rotate-180' : ''}`}
+                      className={`transition-transform duration-200 ${isProjectsOpen ? 'rotate-180' : ''}`}
                     />
                   </button>
                   
-                  {isExtraOpen && (
+                  {isProjectsOpen && (
                     <div className="absolute top-full left-0 mt-2 w-64 bg-blue-light rounded-lg shadow-2xl py-2 z-50 border border-white">
+                      <Link
+                        href="/LezioniIndividuali"
+                        className={`block px-4 py-3 text-sm text-white hover:underline hover:font-semibold transition-all ${
+                          pathname === "/LezioniIndividuali" ? "text-white font-bold underline" : ""
+                        }`}
+                      >
+                        Lezioni Individuali
+                      </Link>
                       <Link
                         href="/Psicomotricita"
                         className={`block px-4 py-3 text-sm text-white hover:underline hover:font-semibold transition-all ${
@@ -168,14 +178,6 @@ export default function Navbar({ initialRole }: NavbarProps) {
                         }`}
                       >
                         Psicomotricità negli Asili
-                      </Link>
-                      <Link
-                        href="/LezioniCalcio"
-                        className={`block px-4 py-3 text-sm text-white hover:underline hover:font-semibold transition-all ${
-                          pathname === "/LezioniCalcio" ? "text-white font-bold underline" : ""
-                        }`}
-                      >
-                        Lezioni Individuali di Calcio
                       </Link>
                     </div>
                   )}
@@ -222,34 +224,38 @@ export default function Navbar({ initialRole }: NavbarProps) {
       {isOpen && (
         <div className="lg:hidden px-5 pb-3 space-y-2 bg-blue-light font-sans uppercase text-[16px]">
           {navLinks[role].map((link) => {
-            if (link.isExtra) {
+            if (link.isProject) {
               return (
                 <div key={link.name}>
-                  {/* FIX: Separazione Label e Freccia */}
                   <div className="w-full flex items-center justify-between text-white py-1">
-                    {/* Testo statico o link finto - cliccando qui NON si chiude */}
-                    <span className={`transition-transform duration-200 ${isExtraOpen ? 'font-semibold' : ''}`}>
+                    <span className={`transition-transform duration-200 ${isProjectsOpen ? 'font-semibold' : ''}`}>
                       {link.name}
                     </span>
-                    
-                    {/* Pulsante dedicato per la freccia - SOLO questo apre/chiude */}
                     <button
                       onClick={(e) => {
-                        e.stopPropagation(); // Ferma la propagazione per sicurezza
-                        setIsExtraOpen(!isExtraOpen);
+                        e.stopPropagation();
+                        setIsProjectsOpen(!isProjectsOpen);
                       }}
-                      className="p-2 -mr-2" // Padding aumentato per facilitare il tocco
-                      aria-label="Apri sottomenu"
+                      className="p-2 -mr-2"
+                      aria-label="Apri progetti"
                     >
                       <ChevronDown 
                         size={20} 
-                        className={`transition-transform duration-200 ${isExtraOpen ? 'rotate-180' : ''}`}
+                        className={`transition-transform duration-200 ${isProjectsOpen ? 'rotate-180' : ''}`}
                       />
                     </button>
                   </div>
                   
-                  {isExtraOpen && (
+                  {isProjectsOpen && (
                     <div className="ml-4 mt-1 space-y-3 pl-2 border-l border-white/30">
+                      <Link
+                        href="/LezioniIndividuali"
+                        className={`block text-sm transition-transform duration-200 hover:scale-105 text-white ${
+                          pathname === "/LezioniIndividuali" ? "font-bold underline" : ""
+                        }`}
+                      >
+                        Lezioni Individuali
+                      </Link>
                       <Link
                         href="/Psicomotricita"
                         className={`block text-sm transition-transform duration-200 hover:scale-105 text-white ${
@@ -257,14 +263,6 @@ export default function Navbar({ initialRole }: NavbarProps) {
                         }`}
                       >
                         Psicomotricità negli Asili
-                      </Link>
-                      <Link
-                        href="/LezioniCalcio"
-                        className={`block text-sm transition-transform duration-200 hover:scale-105 text-white ${
-                          pathname === "/LezioniCalcio" ? "font-bold underline" : ""
-                        }`}
-                      >
-                        Lezioni Individuali di Calcio
                       </Link>
                     </div>
                   )}
@@ -295,7 +293,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
               className="flex items-center gap-2 mt-4 text-white hover:text-red-400 transition"
             >
               <LogOut size={20} />
-              <span>Esci</span>
+              <span>ESCI</span>
             </button>
           )}
         </div>

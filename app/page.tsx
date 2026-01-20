@@ -174,7 +174,7 @@ export default function Home() {
                 {/* Immagine */}
                 <div className="relative h-64 md:h-auto md:w-2/5">
                   <Image
-                    src="/imgs/calcio.jpg"
+                    src="/imgs/calciatore.jpeg"
                     alt="Lezioni individuali di calcio"
                     fill
                     className="object-cover"
@@ -205,7 +205,60 @@ export default function Home() {
                     </div>
                   </div>
                   <Link
-                    href="/LezioniCalcio"
+                    href="/LezioniIndividuali"
+                    className="inline-block w-full md:w-auto text-center bg-cyan-600 text-white py-3 px-8 rounded-lg 
+                      hover:bg-cyan-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg"
+                  >
+                    Scopri di Più →
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Basket - Foto SINISTRA (Nuovo) */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
+              <div className="flex flex-col md:flex-row">
+                {/* Immagine Placeholder Basket */}
+                <div className="relative h-64 md:h-auto md:w-2/5 bg-orange-100 flex items-center justify-center">
+                  {/* Sostituisci questo div con Image quando avrai la foto */}
+                  <div className="absolute inset-0 bg-orange-500/10"></div>
+                  <span className="text-orange-600 font-bold text-xl z-10 uppercase tracking-widest">
+                    Foto Basket
+                  </span>
+                  {/* Se vuoi usare un'immagine di placeholder esterna temporanea, scommenta sotto: */}
+                  {/* <Image 
+                        src="https://placehold.co/600x400/orange/white?text=Basket" 
+                        alt="Basket Placeholder" 
+                        fill 
+                        className="object-cover" 
+                      /> 
+                  */}
+                </div>
+                
+                <div className="p-8 md:w-3/5 flex flex-col justify-center">
+                  <h3 className="text-2xl md:text-3xl font-bold text-blue-deep mb-4">
+                    🏀 Lezioni Individuali di Basket
+                  </h3>
+                  <p className="text-gray-700 mb-6 leading-relaxed">
+                    Sessioni tecniche intensive per sviluppare i fondamentali della pallacanestro. 
+                    Migliora il palleggio, il tiro e la lettura del gioco con i nostri coach esperti.
+                  </p>
+                  <div className="space-y-2 mb-6">
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <span className="text-cyan-600 font-bold text-xl">✓</span>
+                      <span>Ball handling e meccanica di tiro</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <span className="text-cyan-600 font-bold text-xl">✓</span>
+                      <span>Movimenti offensivi e difensivi</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <span className="text-cyan-600 font-bold text-xl">✓</span>
+                      <span>Preparazione atletica specifica</span>
+                    </div>
+                  </div>
+                  <Link
+                    href="/LezioniIndividuali" // Link richiesto
                     className="inline-block w-full md:w-auto text-center bg-cyan-600 text-white py-3 px-8 rounded-lg 
                       hover:bg-cyan-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg"
                   >
@@ -285,7 +338,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SPONSOR - PIÙ STRETTO */}
+{/* SPONSOR - PIÙ STRETTO */}
       <section className="py-16 px-6 bg-cream">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-bold text-blue-deep text-center mb-8">
@@ -297,28 +350,33 @@ export default function Home() {
                 name: "ASC Sport",
                 img: "https://www.ascsport.it/wp-content/themes/asc_sport/images_new/ASC-Logo.svg",
                 href: "https://www.ascsport.it"
+                // Usa il default (p-4)
               },{
                 name: "Seristampa",
                 img: "https://www.seristampa.promo/wp-content/uploads/2024/01/LOGO-header.png",
                 href: "https://www.seristampa.promo"
+                // Usa il default (p-4)
               },{
                 name: "Centro SP",
-                img: "https://centrosp.it/wp-content/uploads/2021/12/CPS-Logo-Transparent.png",
-                href: "https://centrosp.it"
+                img: "https://centrosp.it/wp-content/uploads/2025/08/logo-sito-1024x380.png",
+                href: "https://centrosp.it",
+                width: 220, // Aumentiamo l'immagine
+                height: 150,
+                padding: "p-0" // <--- E togliamo il cuscinetto per compensare!
               }].map((sponsor) => (
                 <a
                   key={sponsor.name}
                   href={sponsor.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block p-4 rounded-lg
-                    hover:shadow-xl hover:scale-110 transition-all duration-300"
+                  // LOGICA QUI SOTTO: Se c'è un padding specifico usa quello, altrimenti p-4
+                  className={`inline-block ${sponsor.padding || "p-4"} rounded-lg hover:shadow-xl hover:scale-110 transition-all duration-300`}
                 >
                   <Image
                     src={sponsor.img}
                     alt={sponsor.name}
-                    width={180}
-                    height={100}
+                    width={sponsor.width || 180} 
+                    height={sponsor.height || 100}
                     className="object-contain"
                   />
                 </a>
