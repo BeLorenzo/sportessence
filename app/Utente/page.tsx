@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { createClient } from "@/app/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -33,7 +33,7 @@ type Enrollment = {
   enrollment_weeks: { camp_weeks: { data_inizio: string; data_fine: string; } }[];
 };
 
-// --- COMPONENTE INTERNO: RIGA ISCRIZIONE (Livello 2 - Espandibile) ---
+// --- COMPONENTE INTERNO: RIGA ISCRIZIONE ---
 const EnrollmentItem = ({ enrollment, child }: { enrollment: Enrollment; child: Child }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -54,7 +54,7 @@ const EnrollmentItem = ({ enrollment, child }: { enrollment: Enrollment; child: 
 
   return (
     <div className={`border border-gray-200 rounded-xl bg-gray-50/30 overflow-hidden transition-all duration-300 ${isOpen ? 'shadow-md bg-white border-cyan-100' : ''}`}>
-      {/* Header Riga (Sempre visibile - Cliccabile) */}
+      {/* Header Riga */}
       <div 
         className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center cursor-pointer hover:bg-gray-50 transition-colors gap-4"
         onClick={() => setIsOpen(!isOpen)}
@@ -91,7 +91,7 @@ const EnrollmentItem = ({ enrollment, child }: { enrollment: Enrollment; child: 
         </div>
       </div>
 
-      {/* Body Espandibile (Dettagli Pagamento) */}
+      {/* Body Espandibile */}
       {isOpen && (
         <div className="p-4 pt-0 border-t border-gray-100 bg-white animate-in slide-in-from-top-2">
            <div className="mt-4 flex flex-col md:flex-row gap-4 md:gap-8 text-xs text-gray-400 mb-4 pb-4 border-b border-dashed border-gray-100">
@@ -107,9 +107,9 @@ const EnrollmentItem = ({ enrollment, child }: { enrollment: Enrollment; child: 
                 amount={daSaldare}
                 childName={child.nome}
                 childSurname={child.cognome}
-                childCF={child.cf}            // Passiamo CF
+                childCF={child.cf}
                 campName={enrollment.camps.nome}
-                reservationId={enrollment.id} // Passiamo ID Prenotazione
+                reservationId={enrollment.id}
               />
            )}
         </div>
@@ -118,7 +118,7 @@ const EnrollmentItem = ({ enrollment, child }: { enrollment: Enrollment; child: 
   );
 };
 
-// --- COMPONENTE INTERNO: CARD BAMBINO (Livello 1 - Espandibile) ---
+// --- COMPONENTE INTERNO: CARD BAMBINO ---
 const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const activeEnrollments = enrollments || [];
@@ -131,11 +131,10 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
   return (
     <div className="border-2 border-gray-100 rounded-2xl overflow-hidden hover:border-cyan-200 transition-all shadow-sm bg-white">
       
-      {/* Header Bambino (Sempre visibile) */}
+      {/* Header Bambino */}
       <div className="bg-gradient-to-r from-cyan-50 to-white p-6 border-b border-gray-100">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           
-          {/* Info Bambino (Cliccabile per espandere) */}
           <div className="flex-1 cursor-pointer group" onClick={() => setIsExpanded(!isExpanded)}>
             <div className="flex items-center gap-3 mb-1">
               <h3 className="text-xl font-bold text-blue-deep group-hover:text-cyan-700 transition-colors">
@@ -155,15 +154,14 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
             </div>
             {child.intolleranze && child.intolleranze.length > 0 && (
                 <p className="text-xs text-orange-600 font-bold mt-2 flex items-center gap-1">
-                    <AlertTriangle size={12}/> Allergie: {child.intolleranze.join(", ")}
+                    <AlertTriangle size={12}/> {child.intolleranze.join(", ")}
                 </p>
             )}
           </div>
 
-          {/* Azioni */}
           <div className="flex gap-2 items-center self-end md:self-center">
             <button onClick={() => onRegister(child.id)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 font-bold text-sm shadow-sm whitespace-nowrap">
-               <TrendingUp size={16}/> Nuova Iscrizione
+               <TrendingUp size={16}/> Nuova
             </button>
             <button onClick={() => onEdit(child)} className="p-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors" title="Modifica Dati">
                <Edit2 size={18}/>
@@ -171,8 +169,6 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
             <button onClick={() => onDelete(child)} className="p-2 bg-white border border-red-100 text-red-500 rounded-lg hover:bg-red-50 transition-colors" title="Elimina Bambino">
                <Trash2 size={18}/>
             </button>
-            
-            {/* Freccia Toggle */}
             <button 
                onClick={() => setIsExpanded(!isExpanded)} 
                className={`p-2 ml-2 transition-colors rounded-full ${isExpanded ? 'bg-cyan-50 text-cyan-600' : 'text-gray-400 hover:bg-gray-50'}`}
@@ -183,7 +179,7 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
         </div>
       </div>
 
-      {/* Body Espandibile (Lista Iscrizioni) */}
+      {/* Body Espandibile */}
       {isExpanded && (
         <div className="p-6 bg-white space-y-4 animate-in slide-in-from-top-4 border-t border-gray-100">
            <h4 className="font-bold text-gray-400 text-xs uppercase tracking-wider mb-3 ml-1">Storico Iscrizioni</h4>
@@ -207,9 +203,8 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
 };
 
 
-// --- PAGINA PRINCIPALE ---
-
-export default function PaginaUtente() {
+// --- CONTENUTO PAGINA PRINCIPALE (Logic Wrapper) ---
+function UtenteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
@@ -235,6 +230,7 @@ export default function PaginaUtente() {
   useEffect(() => {
     if (searchParams.get('success') === 'true' || searchParams.get('success') === 'enrollment_created') {
       showAlert("✅ Prenotazione confermata! Apri la scheda del bambino per i dettagli di pagamento.", "success");
+      // Puliamo l'URL per non mostrare il messaggio al refresh
       router.replace('/Utente');
     }
   }, [searchParams, router]);
@@ -279,7 +275,6 @@ export default function PaginaUtente() {
   };
 
   const handleDeleteAccount = () => {
-     // Check debiti: si potrebbe raffinare, ma blocchiamo se c'è un debito
      const hasDebt = Object.values(enrollments).flat().some(e => (e.prezzo_totale - e.pagato) > 0);
      if (hasDebt) {
         showAlert("Impossibile eliminare l'account: ci sono pagamenti in sospeso.", "error");
@@ -309,7 +304,7 @@ export default function PaginaUtente() {
   if (!profile) return null;
 
   return (
-    <main className="min-h-screen bg-cream py-12 px-4">
+    <>
       {alert && (
         <div className={`fixed z-[200] top-6 left-1/2 -translate-x-1/2 px-6 py-4 rounded-xl font-bold shadow-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4 ${alert.type === "error" ? "bg-red-500 text-white" : "bg-emerald-500 text-white"}`}>
           {alert.type === "error" ? <AlertTriangle size={20}/> : <CheckCircle size={20}/>}
@@ -388,6 +383,21 @@ export default function PaginaUtente() {
           description={deleteModalConfig.type === "ACCOUNT" ? "Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile." : "Sei sicuro di voler eliminare questo bambino?"}
           confirmText="Elimina definitivamente" 
       />
+    </>
+  );
+}
+
+// --- EXPORT DEFAULT (Pagina Wrapper con Suspense) ---
+export default function PaginaUtente() {
+  return (
+    <main className="min-h-screen bg-cream py-12 px-4">
+      <Suspense fallback={
+         <div className="flex h-screen items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div>
+         </div>
+      }>
+        <UtenteContent />
+      </Suspense>
     </main>
   );
 }
