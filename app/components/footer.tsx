@@ -41,23 +41,23 @@ export default function Footer() {
 
           {/* Info legali */}
           <div className="flex flex-col items-center text-center">
-            <h5 className="font-bold uppercase mb-3">SPORTESSENCE</h5>
+            <h5 className="font-bold uppercase mb-3">Sportessence Asd APS</h5>
             <ul className="text-sm space-y-1">
               <li>
                 <span className="text-white/80">P.IVA:</span>{" "}
-                <span>Inserire partita iva</span>
+                <span>04231980139</span>
               </li>
               <li>
                 <span className="text-white/80">Sede legale:</span>{" "}
-                <span>Inserire sede legale</span>
+                <span>Via L. Mascherpa 4, 22100 Como (CO)</span>
               </li>
               <li>
-                <span className="text-white/80">Capitale Sociale:</span>{" "}
-                <span>Inserire capitale</span>
+                <span className="text-white/80">CF:</span>{" "}
+                <span>95150810133</span>
               </li>
               <li>
-                <span className="text-white/80">REA:</span>{" "}
-                <span>BG-123456</span>
+                <span className="text-white/80">Codice SDI:</span>{" "}
+                <span>KRRH6B9</span>
               </li>
             </ul>
           </div>

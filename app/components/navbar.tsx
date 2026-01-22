@@ -32,10 +32,18 @@ export default function Navbar({ initialRole }: NavbarProps) {
   // Reset menu al cambio pagina
   useEffect(() => {
     setIsOpen(false);
-    setIsProjectsOpen(false);
   }, [pathname]);
 
-  // Click outside
+  // Apri automaticamente Progetti se siamo in una delle pagine figlie
+  useEffect(() => {
+    if (pathname === "/LezioniIndividuali" || pathname === "/Psicomotricita") {
+      setIsProjectsOpen(true);
+    } else {
+      setIsProjectsOpen(false);
+    }
+  }, [pathname]);
+
+  // Click outside per dropdown desktop
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (isOpen) return;
@@ -95,13 +103,12 @@ export default function Navbar({ initialRole }: NavbarProps) {
   };
 
   // --- CONFIGURAZIONE LINK ---
-  // "Progetti" è ora l'unico punto di accesso per Lezioni e Psicomotricità
   const navLinks: Record<UserRole, { name: string; href: string; isProject?: boolean }[]> = {
     guest: [
       { name: "Home", href: "/" },
       { name: "Chi siamo", href: "/About" },
       { name: "Campi Estivi", href: "/Campi" },
-      { name: "Progetti", href: "#", isProject: true }, // Contiene Lezioni e Psicomotricità
+      { name: "Progetti", href: "#", isProject: true },
       { name: "Info utili", href: "/Info" },
       { name: "Login", href: "/Login" },
       { name: "Registrazione", href: "/Registrazione" },
@@ -148,8 +155,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
                   <button
                     onClick={() => setIsProjectsOpen(!isProjectsOpen)}
                     className={`flex items-center gap-1 transition hover:underline uppercase hover:font-semibold hover:scale-105 ${
-                      // Evidenzia "Progetti" se siamo in una delle pagine figlie
-                      pathname === "/Psicomotricita" || pathname === "/LezioniCalcio"
+                      pathname === "/Psicomotricita" || pathname === "/LezioniIndividuali"
                         ? "text-white underline underline-offset-4 decoration-2 font-bold scale-105"
                         : "text-white"
                     }`}
@@ -228,7 +234,13 @@ export default function Navbar({ initialRole }: NavbarProps) {
               return (
                 <div key={link.name}>
                   <div className="w-full flex items-center justify-between text-white py-1">
-                    <span className={`transition-transform duration-200 ${isProjectsOpen ? 'font-semibold' : ''}`}>
+                    <span
+                      className={`transition-transform duration-200 ${
+                        pathname === "/LezioniIndividuali" || pathname === "/Psicomotricita"
+                          ? "font-bold underline"
+                          : ""
+                      }`}
+                    >
                       {link.name}
                     </span>
                     <button

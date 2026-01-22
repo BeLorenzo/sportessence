@@ -37,13 +37,23 @@ export default function Privacy() {
             <h2 className="text-2xl font-bold text-blue-deep mb-4">
               Titolare del Trattamento
             </h2>
-            <p className="text-gray-700 leading-relaxed">
-              <strong>SPORTESSENCE ASD/APS</strong><br />
-              Sede legale: [Inserire indirizzo completo]<br />
-              P.IVA: [Inserire P.IVA]<br />
-              Email: sportessence.asd.aps@gmail.com<br />
-              Telefono: 342 039 4661
-            </p>
+    <p className="text-gray-700 leading-relaxed">
+  <strong>SPORTESSENCE ASD/APS</strong><br />
+  Sede legale: Via L. Mascherpa 4, 22100 Como (CO)<br />
+  P.IVA: 04231980139<br />
+  CF: 95150810133<br />
+  Codice SDI: KRRH6B9<br />
+  Email: sportessence.asd.aps@gmail.com<br />
+  Telefono: 342 039 4661
+</p>
+
+
+
+
+
+
+
+
           </div>
 
           {/* Tipologia di Dati Raccolti */}

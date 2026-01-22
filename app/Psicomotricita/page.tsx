@@ -1,6 +1,7 @@
+import { Mail, Phone } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { BiMailSend } from "react-icons/bi";
+import { BiLogoWhatsapp, BiMailSend } from "react-icons/bi";
 
 export default function Psicomotricita() {
   return (
@@ -233,38 +234,49 @@ export default function Psicomotricita() {
         </div>
       </section>
 
-      {/* CTA CONTATTO */}
-      <section className="py-16 px-6 bg-cream">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-blue-deep mb-6">
-            Interessato alle Nostre Attività?
-          </h2>
-          <p className="text-lg text-gray-700 mb-8 leading-relaxed">
-            Contattaci per maggiori informazioni sui nostri percorsi di psicomotricità, 
-            disponibilità negli asili della tua zona, prezzi e modalità di iscrizione.
-          </p>
-          
-          <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12">
-            <div className="flex flex-col items-center gap-6">
-              <div className="bg-cyan-600 text-white p-6 rounded-full">
-                <BiMailSend className="text-5xl" />
-              </div>
-              <div>
-                <p className="text-gray-600 mb-2">Scrivici a:</p>
-                <a 
-                  href="mailto:sportessence.asd.aps@gmail.com?subject=Richiesta Informazioni - Psicomotricità"
-                  className="text-2xl md:text-3xl font-bold text-cyan-600 hover:text-cyan-700 hover:underline transition-all"
-                >
-                  sportessence.asd.aps@gmail.com
-                </a>
-              </div>
-              <p className="text-sm text-gray-600 max-w-2xl">
-                Ti risponderemo entro 24-48 ore con tutte le informazioni sui nostri percorsi, 
-                costi, orari disponibili e modalità di collaborazione con il tuo asilo.
-              </p>
+      {/* --- SEZIONE 2: CTA FINALE (CREAM) --- */}
+      <section className="bg-cream pt-20 pb-5 px-6">
+         <div className="max-w-5xl mx-auto">
+            {/* CTA Box Bianco */}
+            <div className="bg-white rounded-3xl p-10 md:p-14 shadow-2xl flex flex-col items-center justify-center text-center border-t-4 border-cyan-600">
+                <h3 className="text-2xl md:text-4xl font-bold text-blue-deep mb-3 uppercase">Prenota la tua lezione</h3>
+                <p className="text-gray-500 mb-10 text-lg">I posti per le lezioni individuali sono limitati.</p>
+                
+                {/* GRIGLIA PULSANTI SIMMETRICI */}
+                <div className="flex flex-col md:flex-row gap-5 w-full justify-center items-center">
+                    
+                    {/* 1. WhatsApp */}
+                    <a 
+                      href="https://wa.me/393420394661" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full md:w-64 flex items-center justify-center gap-3 bg-[#25D366] text-white py-4 px-6 rounded-xl font-bold hover:bg-[#20bd5a] transition-all shadow-md hover:scale-105 hover:-translate-y-1"
+                    >
+                        <BiLogoWhatsapp size={26} />
+                        <span>WhatsApp</span>
+                    </a>
+
+                    {/* 2. Email */}
+                    <a 
+                      href="mailto:sportessence.asd.aps@gmail.com" 
+                      className="w-full md:w-64 flex items-center justify-center gap-3 bg-blue-light text-white py-4 px-6 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-md hover:scale-105 hover:-translate-y-1"
+                    >
+                        <Mail size={24} />
+                        <span>Invia Email</span>
+                    </a>
+
+                    {/* 3. Telefono */}
+                    <a 
+                      href="tel:+393420394661" 
+                      className="w-full md:w-64 flex items-center justify-center gap-3 bg-white text-blue-deep border-2 border-blue-light py-4 px-6 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-md hover:scale-105 hover:-translate-y-1"
+                    >
+                        <Phone size={24} />
+                        <span>Chiama</span>
+                    </a>
+
+                </div>
             </div>
-          </div>
-        </div>
+         </div>
       </section>
 
       {/* FAQ */}
@@ -323,13 +335,13 @@ export default function Psicomotricita() {
                 Campi Estivi
               </Link>
               <Link
-                href="/LezioniCalcio"
+                href="/LezioniIndividuali"
                 className="bg-white text-blue-deep py-4 px-8 rounded-lg shadow-md 
                   hover:-translate-y-1 hover:shadow-xl transition-all duration-300 font-semibold
                   flex items-center justify-center gap-2"
               >
-                <span className="text-2xl">⚽</span>
-                Lezioni Individuali di Calcio
+                <span className="text-2xl">⚽🏀</span>
+                Lezioni Individuali 
               </Link>
             </div>
           </div>

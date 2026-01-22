@@ -199,7 +199,7 @@ export default function LezioniIndividuali() {
       <section className="bg-cream py-20 px-6">
          <div className="max-w-5xl mx-auto">
             {/* CTA Box Bianco */}
-            <div className="bg-white rounded-3xl p-10 md:p-14 shadow-2xl flex flex-col items-center justify-center text-center border-t-4 border-blue-light">
+            <div className="bg-white rounded-3xl p-10 md:p-14 shadow-2xl flex flex-col items-center justify-center text-center border-t-4 border-cyan-600">
                 <h3 className="text-2xl md:text-4xl font-bold text-blue-deep mb-3 uppercase">Prenota la tua lezione</h3>
                 <p className="text-gray-500 mb-10 text-lg">I posti per le lezioni individuali sono limitati.</p>
                 

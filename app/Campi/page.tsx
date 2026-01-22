@@ -407,13 +407,13 @@ export default async function CampiPage() {
                 Psicomotricità negli Asili
               </Link>
               <Link
-                href="/LezioniCalcio"
+                href="/LezioniIndividuali"
                 className="bg-white text-blue-deep py-4 px-8 rounded-lg shadow-md 
                   hover:-translate-y-1 hover:shadow-xl transition-all duration-300 font-semibold
                   flex items-center justify-center gap-2"
               >
-                <span className="text-2xl">⚽</span>
-                Lezioni Individuali di Calcio
+                <span className="text-2xl">⚽🏀</span>
+                Lezioni Individuali 
               </Link>
             </div>
           </div>
