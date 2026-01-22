@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: [
+    '@react-email/components',
+    '@react-email/render',
+    '@react-email/html',
+    '@react-email/tailwind'
+  ],
   // Abilita React Strict Mode per migliori pratiche
   reactStrictMode: true,
 
@@ -20,7 +26,6 @@ const nextConfig = {
       },
     ],
   },
-
   // Security Headers - IMPORTANTE PER SICUREZZA
   async headers() {
     return [
@@ -90,16 +95,6 @@ const nextConfig = {
 
   // Ottimizzazioni
   swcMinify: true,
-
-  // Experimental features
-  experimental: {
-    serverComponentsExternalPackages: [
-      '@react-email/components',
-      '@react-email/render',
-      '@react-email/html',
-      '@react-email/tailwind'
-    ],
-  },
 }
-
 module.exports = nextConfig
+

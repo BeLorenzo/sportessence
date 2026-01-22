@@ -131,7 +131,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
           amount: payload.totalPrice,
           iban: BANK_INFO.iban,
           reservationId: enrollment.id  // E anche questo
-        }),
+        }) as any,
       });
     }
   } catch (emailError) {
