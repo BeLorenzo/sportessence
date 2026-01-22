@@ -1,20 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import { Phone, Mail, Check, User, Calendar, Target, Trophy, Activity } from "lucide-react";
+import Link from "next/link";
+import { Phone, Mail, Check, User, Calendar, Target, Trophy, Activity, ArrowRight, Quote } from "lucide-react";
 import { BiLogoWhatsapp } from "react-icons/bi"; 
 import calcioImg from "@/public/imgs/calciatore.jpeg";
-// Placeholder per il basket
-// import basketImg from "@/public/imgs/basket.jpg";
 
 export default function LezioniIndividuali() {
   return (
     <main className="min-h-screen bg-cream font-sans">
       
-      {/* --- HERO SECTION SPLITTATA --- */}
+      {/* --- HERO SECTION --- */}
       <section className="relative w-full h-[85vh] md:h-[600px] flex flex-col md:flex-row overflow-hidden shadow-2xl">
         
-        {/* LATO SINISTRO: CALCIO */}
+        {/* LATO SINISTRO: CALCIO (Invariato - Basso a SX su Mobile) */}
         <div className="relative w-full md:w-1/2 h-1/2 md:h-full group overflow-hidden">
           <Image
             src={calcioImg}
@@ -38,13 +37,16 @@ export default function LezioniIndividuali() {
           </div>
         </div>
 
-        {/* LATO DESTRO: BASKET (Placeholder) */}
-        <div className="relative w-full md:w-1/2 h-1/2 md:h-full bg-orange-600 flex items-center justify-center group overflow-hidden border-t-4 md:border-t-0 md:border-l-4 border-white">
+        {/* LATO DESTRO: BASKET (Corretto - Basso a SX su Mobile, Centro DX su Desktop) */}
+        {/* Modifica 1: flex-col, justify-end (mobile) -> md:justify-center (desktop) */}
+        <div className="relative w-full md:w-1/2 h-1/2 md:h-full bg-orange-600 flex flex-col justify-end md:justify-center group overflow-hidden border-t-4 md:border-t-0 md:border-l-4 border-white">
             <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-700 opacity-90"></div>
             
-            <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left p-8 md:p-12 w-full">
-                <div className="md:max-w-xs md:ml-auto md:mr-0 mx-auto md:text-right flex flex-col items-center md:items-end translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+            {/* Modifica 2: Rimosso items-center, aggiunto padding coerente */}
+            <div className="relative z-10 w-full p-8 md:p-12">
+                {/* Modifica 3: items-start/text-left (mobile) -> md:items-end/md:text-right (desktop) */}
+                <div className="flex flex-col items-start md:items-end text-left md:text-right md:ml-auto md:max-w-xs translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                   <div className="bg-white/20 backdrop-blur-md w-fit p-3 rounded-xl mb-4 text-white">
                     <Activity size={32} />
                   </div>
@@ -146,9 +148,38 @@ export default function LezioniIndividuali() {
         </div>
       </div>
 
-      {/* --- SEZIONE 1: COME INIZIARE (BLUE) --- */}
+      {/* --- TESTIMONIANZE --- */}
+      <section className="pt-10 pb-20 px-6 bg-cream">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-blue-deep mb-12 uppercase">
+            Cosa dicono i nostri atleti
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { text: "Grazie alle lezioni individuali ho migliorato tantissimo il mio piede debole. Ora mi sento molto più sicuro in partita!", author: "Marco, 14 anni", sport: "Calcio" },
+              { text: "Il coach ha corretto la mia meccanica di tiro in poche lezioni. Ho aumentato notevolmente la mia percentuale a canestro.", author: "Giulia, 16 anni", sport: "Basket" },
+              { text: "Mio figlio era un po' impacciato nei movimenti. Con il lavoro coordinativo specifico è cambiato totalmente. Grazie!", author: "Papà di Luca, 10 anni", sport: "Calcio" }
+            ].map((review, i) => (
+              <div key={i} className="bg-white p-8 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-shadow relative">
+                <Quote className="text-cyan-100 absolute top-4 right-4" size={40} />
+                <div className="flex items-center gap-2 mb-4">
+                   <div className={`px-3 py-1 rounded-full text-xs font-bold text-white uppercase ${review.sport === 'Calcio' ? 'bg-blue-500' : 'bg-orange-500'}`}>
+                     {review.sport}
+                   </div>
+                   <div className="flex gap-1">
+                     {[1,2,3,4,5].map(star => <span key={star} className="text-yellow-400 text-sm">★</span>)}
+                   </div>
+                </div>
+                <p className="text-gray-600 italic mb-6">"{review.text}"</p>
+                <p className="font-bold text-blue-deep text-right">- {review.author}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* --- COME INIZIARE --- */}
       <section className="bg-blue-light text-white py-20 relative overflow-hidden">
-        {/* Decorazione */}
         <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
         <div className="max-w-6xl mx-auto px-6 relative z-10">
@@ -159,54 +190,32 @@ export default function LezioniIndividuali() {
               </p>
             </div>
 
-            {/* Steps Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-                {/* Step 1 */}
-                <div className="bg-white/10 p-8 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
+                {[
+                  { icon: User, title: "1. Contattaci", text: "Scrivici su WhatsApp, inviaci una mail o chiamaci." },
+                  { icon: Calendar, title: "2. Pianifica", text: "Scegliamo insieme giorni e orari. Massima flessibilità." },
+                  { icon: Target, title: "3. Allenati", text: "Scendi in campo con il tuo istruttore dedicato." }
+                ].map((step, i) => (
+                  <div key={i} className="bg-white/10 p-8 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
                     <div className="bg-white text-blue-deep w-14 h-14 rounded-full flex items-center justify-center mb-6 mx-auto md:mx-0 shadow-lg">
-                      <User size={28} />
+                      <step.icon size={28} />
                     </div>
-                    <h4 className="text-xl font-bold mb-3">1. Contattaci</h4>
-                    <p className="text-blue-100 leading-relaxed">
-                      Scrivici su WhatsApp, inviaci una mail o chiamaci. Raccontaci i tuoi obiettivi.
-                    </p>
-                </div>
-                {/* Step 2 */}
-                <div className="bg-white/10 p-8 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
-                    <div className="bg-white text-blue-deep w-14 h-14 rounded-full flex items-center justify-center mb-6 mx-auto md:mx-0 shadow-lg">
-                      <Calendar size={28} />
-                    </div>
-                    <h4 className="text-xl font-bold mb-3">2. Pianifica</h4>
-                    <p className="text-blue-100 leading-relaxed">
-                      Scegliamo insieme giorni e orari. Massima flessibilità per te.
-                    </p>
-                </div>
-                {/* Step 3 */}
-                <div className="bg-white/10 p-8 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
-                    <div className="bg-white text-blue-deep w-14 h-14 rounded-full flex items-center justify-center mb-6 mx-auto md:mx-0 shadow-lg">
-                      <Target size={28} />
-                    </div>
-                    <h4 className="text-xl font-bold mb-3">3. Allenati</h4>
-                    <p className="text-blue-100 leading-relaxed">
-                      Scendi in campo con il tuo istruttore dedicato e inizia a migliorare.
-                    </p>
-                </div>
+                    <h4 className="text-xl font-bold mb-3">{step.title}</h4>
+                    <p className="text-blue-100 leading-relaxed">{step.text}</p>
+                  </div>
+                ))}
             </div>
         </div>
       </section>
 
-      {/* --- SEZIONE 2: CTA FINALE (CREAM) --- */}
+      {/* --- CTA FINALE --- */}
       <section className="bg-cream py-20 px-6">
          <div className="max-w-5xl mx-auto">
-            {/* CTA Box Bianco */}
             <div className="bg-white rounded-3xl p-10 md:p-14 shadow-2xl flex flex-col items-center justify-center text-center border-t-4 border-cyan-600">
                 <h3 className="text-2xl md:text-4xl font-bold text-blue-deep mb-3 uppercase">Prenota la tua lezione</h3>
                 <p className="text-gray-500 mb-10 text-lg">I posti per le lezioni individuali sono limitati.</p>
                 
-                {/* GRIGLIA PULSANTI SIMMETRICI */}
                 <div className="flex flex-col md:flex-row gap-5 w-full justify-center items-center">
-                    
-                    {/* 1. WhatsApp */}
                     <a 
                       href="https://wa.me/393420394661" 
                       target="_blank" 
@@ -216,8 +225,6 @@ export default function LezioniIndividuali() {
                         <BiLogoWhatsapp size={26} />
                         <span>WhatsApp</span>
                     </a>
-
-                    {/* 2. Email */}
                     <a 
                       href="mailto:sportessence.asd.aps@gmail.com" 
                       className="w-full md:w-64 flex items-center justify-center gap-3 bg-blue-light text-white py-4 px-6 rounded-xl font-bold hover:bg-blue-800 transition-all shadow-md hover:scale-105 hover:-translate-y-1"
@@ -225,8 +232,6 @@ export default function LezioniIndividuali() {
                         <Mail size={24} />
                         <span>Invia Email</span>
                     </a>
-
-                    {/* 3. Telefono */}
                     <a 
                       href="tel:+393420394661" 
                       className="w-full md:w-64 flex items-center justify-center gap-3 bg-white text-blue-deep border-2 border-blue-light py-4 px-6 rounded-xl font-bold hover:bg-blue-50 transition-all shadow-md hover:scale-105 hover:-translate-y-1"
@@ -234,11 +239,42 @@ export default function LezioniIndividuali() {
                         <Phone size={24} />
                         <span>Chiama</span>
                     </a>
-
                 </div>
             </div>
          </div>
       </section>
+
+      {/* --- ALTRE ATTIVITÀ --- */}
+        <section className="pt-10 pb-16 px-6">
+          <div className="mx-auto max-w-4xl text-center bg-blue-light p-8 rounded-2xl shadow-2xl">
+            <h3 className="text-3xl font-bold text-white mb-4">
+              Scopri le Nostre Altre Attività! 🌟
+            </h3>
+            <p className="text-white/90 text-lg mb-8">
+              Non solo campi estivi: offriamo anche attività durante tutto l'anno
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/Campi"
+                className="bg-white text-blue-deep py-4 px-8 rounded-lg shadow-md 
+                  hover:-translate-y-1 hover:shadow-xl transition-all duration-300 font-semibold
+                  flex items-center justify-center gap-2"
+              >
+                <span className="text-2xl">🏕️</span>
+                Campi Estivi 
+              </Link>
+              <Link
+                href="/Psicomotricita"
+                className="bg-white text-blue-deep py-4 px-8 rounded-lg shadow-md 
+                  hover:-translate-y-1 hover:shadow-xl transition-all duration-300 font-semibold
+                  flex items-center justify-center gap-2"
+              >
+                <span className="text-2xl">👶</span>
+                Psicomotricità negli Asili
+              </Link>
+            </div>
+          </div>
+        </section>
 
     </main>
   );
