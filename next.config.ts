@@ -93,8 +93,12 @@ const nextConfig = {
 
   // Experimental features
   experimental: {
-    // Abilita se usi React Server Components
-    // serverActions: true,
+    serverComponentsExternalPackages: [
+      '@react-email/components',
+      '@react-email/render',
+      '@react-email/html',
+      '@react-email/tailwind'
+    ],
   },
 }
 

@@ -233,7 +233,7 @@ export default function AddChildModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-49 flex items-center justify-center p-4">
+    <div className="fixed inset-0 mt-20 z-49 flex items-center justify-center p-4">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -250,7 +250,7 @@ export default function AddChildModal({
           </h2>
           <button
             onClick={onClose}
-            className="hover:bg-blue-800 p-2 rounded-lg transition-colors"
+            className="hover:scale-125 p-2 rounded-lg transition-colors"
             disabled={isSubmitting}
           >
             <X size={24} />

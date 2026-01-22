@@ -1,9 +1,8 @@
 import { createClient } from "@/app/utils/supabase/server";
 import Link from "next/link";
 import { Calendar, MapPin, Users, Mail, XCircle, Clock, CheckCircle2, ArrowRight, Phone } from "lucide-react";
-import { BiLogoWhatsapp } from "react-icons/bi";
 
-// Disabilita cache
+// Disabilita cache per avere dati sempre freschi
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -14,22 +13,63 @@ export default async function CampiPage() {
   const { data: { user } } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
-  // Recupera tutti i campi (anche quelli disattivati)
-  const { data: camps, error } = await supabase
+  // Recupera tutti i campi con le relazioni (settimane e prezzi)
+  const { data: rawCamps, error } = await supabase
     .from('camps')
-    .select('*')
-    .order('data_inizio', { ascending: true });
+    .select(`
+      *,
+      camp_weeks (*),
+      camp_pricing_tiers (*)
+    `);
 
   if (error) {
     console.error('Errore caricamento campi:', error);
   }
 
+  // LOGICA ORDINAMENTO E CALCOLO DATI
+  // Ordiniamo i campi in base alla data di inizio della loro prima settimana
+  const camps = (rawCamps || []).map(camp => {
+    // 1. Ordina le settimane cronologicamente
+    const sortedWeeks = camp.camp_weeks?.sort((a: any, b: any) => 
+      new Date(a.data_inizio).getTime() - new Date(b.data_inizio).getTime()
+    ) || [];
+
+    // 2. Estrai date limite
+    const startDate = sortedWeeks.length > 0 ? sortedWeeks[0].data_inizio : null;
+    const endDate = sortedWeeks.length > 0 ? sortedWeeks[sortedWeeks.length - 1].data_fine : null;
+
+    // 3. Estrai Prezzo Base (cerca il tier da 1 settimana, o il più basso disponibile)
+    const tiers = camp.camp_pricing_tiers?.sort((a: any, b: any) => a.min_weeks - b.min_weeks) || [];
+    const baseTier = tiers.find((t: any) => t.min_weeks === 1) || tiers[0];
+    const displayPrice = baseTier ? baseTier.price_per_week : 0;
+
+    return {
+      ...camp,
+      computedData: {
+        startDate,
+        endDate,
+        displayPrice,
+        weeksCount: sortedWeeks.length
+      }
+    };
+  }).sort((a, b) => {
+    // Ordina i campi: prima quelli che iniziano prima
+    if (!a.computedData.startDate) return 1;
+    if (!b.computedData.startDate) return -1;
+    return new Date(a.computedData.startDate).getTime() - new Date(b.computedData.startDate).getTime();
+  });
+
   const formatDate = (dateString: string) => {
+    if (!dateString) return "Date da definire";
     return new Date(dateString).toLocaleDateString('it-IT', {
-      day: '2-digit',
+      day: 'numeric',
       month: 'long',
-      year: 'numeric'
     });
+  };
+
+  const formatYear = (dateString: string) => {
+    if (!dateString) return "";
+    return new Date(dateString).getFullYear();
   };
 
   return (
@@ -47,10 +87,9 @@ export default async function CampiPage() {
         </div>
       </section>
 
-      {/* --- DESCRIZIONE GENERALE --- */}
+      {/* --- DESCRIZIONE GENERALE (Statico - invariato) --- */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto space-y-16">
-
           {/* Intro */}
           <div className="text-center max-w-4xl mx-auto">
             <h2 className="text-3xl md:text-4xl font-bold text-blue-deep mb-6 uppercase tracking-wide">
@@ -60,15 +99,12 @@ export default async function CampiPage() {
             <p className="text-gray-700 text-lg leading-relaxed">
               I nostri campi estivi sportivi sono pensati per offrire ai bambini e ai ragazzi
               un'esperienza completa fatta di movimento, gioco e socialità.
-              Ogni giornata è strutturata per garantire divertimento, sicurezza e crescita personale,
-              seguiti da istruttori qualificati.
             </p>
           </div>
 
-          {/* Grid Dettagli (Restyling Card) */}
+          {/* Grid Dettagli */}
           <div className="grid md:grid-cols-2 gap-12 mt-17 items-stretch">
-            
-            {/* Colonna Sinistra: Attività */}
+            {/* Colonna Sinistra */}
             <div className="flex flex-col justify-center">
               <h3 className="text-2xl font-bold text-blue-deep mb-6 flex items-center gap-3">
                 <span className="p-2 rounded-lg text-cyan-700">⚽</span>
@@ -89,7 +125,7 @@ export default async function CampiPage() {
               </ul>
             </div>
 
-            {/* Colonna Destra: Giornata Tipo (Card Bianca) */}
+            {/* Colonna Destra: Giornata Tipo */}
             <div className="bg-white rounded-[2rem] shadow-xl p-8 mt-3 md:p-10 border-t-8 border-blue-500 relative overflow-hidden">
               <h4 className="text-2xl font-bold text-blue-deep mb-8 flex items-center gap-3">
                 <Clock className="text-blue-500" />
@@ -116,33 +152,6 @@ export default async function CampiPage() {
               </div>
             </div>
           </div>
-
-          {/* Dove siamo (Box Blu) */}
-          <div className="bg-blue-light rounded-3xl p-10 md:p-14 shadow-xl text-center text-white relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full bg-[url('/imgs/pattern.png')] opacity-10"></div>
-            <div className="relative z-10 max-w-3xl mx-auto">
-              <MapPin className="mx-auto w-12 h-12 mb-4 text-cyan-300" />
-              <h3 className="text-2xl md:text-3xl font-bold mb-4 uppercase">
-                Più sedi nel territorio comasco
-              </h3>
-              <p className="text-blue-100 text-lg leading-relaxed">
-                I nostri campi estivi sono attivi in diverse sedi nel territorio comasco,
-                per offrire alle famiglie una soluzione comoda e facilmente raggiungibile.
-                Ogni struttura è selezionata per garantire spazi adeguati, sicurezza e qualità.
-              </p>
-            </div>
-          </div>
-
-          {/* CTA Anchor */}
-          <div className="text-center pt-5">
-            <h3 className="text-3xl font-bold text-blue-deep mb-2">
-              Scegli il campo più adatto a te
-            </h3>
-            <p className="text-gray-500 text-lg">
-              Scopri qui sotto date, sedi e disponibilità.
-            </p>
-          </div>
-
         </div>
       </section>
 
@@ -162,11 +171,9 @@ export default async function CampiPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:gap-10 gap-8">
               {camps.map((camp) => {
-                const postiEsauriti = camp.posti_disponibili !== null && 
-                                     camp.posti_disponibili !== undefined && 
-                                     camp.posti_disponibili === 0;
-                
+                const { startDate, endDate, displayPrice, weeksCount } = camp.computedData;
                 const campoDisattivato = !camp.attivo;
+                const indirizzoCompleto = `${camp.indirizzo_via} ${camp.indirizzo_civico}, ${camp.indirizzo_paese}`;
                 
                 return (
                   <div 
@@ -201,8 +208,8 @@ export default async function CampiPage() {
                           {camp.nome}
                         </h3>
                         <div className="flex items-center gap-2 text-blue-100 font-medium text-sm">
-                          <MapPin size={18} className="text-cyan-400" />
-                          <span>{camp.indirizzo_paese} ({camp.indirizzo_provincia})</span>
+                          <MapPin size={18} className="text-cyan-400 shrink-0" />
+                          <span className="truncate">{camp.indirizzo_paese} ({camp.indirizzo_provincia})</span>
                         </div>
                       </div>
                     </div>
@@ -210,18 +217,26 @@ export default async function CampiPage() {
                     {/* Body Card */}
                     <div className="p-8 flex flex-col flex-grow relative">
                       
-                      {/* Date */}
+                      {/* Date e Durata */}
                       <div className="flex items-start gap-4 mb-6 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                        <div className="bg-white p-3 rounded-xl shadow-sm text-blue-600">
+                        <div className="bg-white p-3 rounded-xl shadow-sm text-blue-600 shrink-0">
                           <Calendar size={24} />
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Periodo</p>
+                          <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
+                            {weeksCount} Settimane disponibili
+                          </p>
                           <p className="text-gray-800 font-semibold text-lg leading-tight">
-                            {formatDate(camp.data_inizio)} <br/> 
-                            <span className="text-gray-400 text-sm font-normal">fino al</span> {formatDate(camp.data_fine)}
+                             Dal {formatDate(startDate || "")} <br/> 
+                             <span className="text-gray-400 text-sm font-normal">al</span> {formatDate(endDate || "")} {formatYear(endDate || "")}
                           </p>
                         </div>
+                      </div>
+
+                      {/* Info Indirizzo */}
+                      <div className="mb-4 text-sm text-gray-500 flex gap-2 items-start">
+                         <MapPin size={16} className="mt-0.5 shrink-0"/>
+                         <span>{indirizzoCompleto}</span>
                       </div>
 
                       {/* Descrizione */}
@@ -237,20 +252,22 @@ export default async function CampiPage() {
                       <div className="flex-grow"></div>
 
                       {/* Prezzo */}
-                      {camp.prezzo !== null && camp.prezzo !== undefined && (
-                        <div className="flex items-end justify-between mb-8 border-t border-gray-100 pt-6">
-                          <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">A partire da</p>
-                            <p className="text-xs text-gray-400">*prezzo settimanale.</p>
-                              <p className="text-xs text-gray-400">Possibilità di sconti e offerte in fase di iscrizione</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-4xl font-extrabold text-blue-deep">
-                              €{camp.prezzo}
-                            </p>
-                          </div>
+                      <div className="flex items-end justify-between mb-8 border-t border-gray-100 pt-6">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Giornata Intera</p>
+                          <p className="text-[10px] text-gray-400">*prezzo per 1 settimana</p>
                         </div>
-                      )}
+                        <div className="text-right">
+                           {displayPrice > 0 ? (
+                             <>
+                               <p className="text-xs text-gray-400 mb-0.5">a partire da</p>
+                               <p className="text-3xl font-extrabold text-blue-deep">€{displayPrice}</p>
+                             </>
+                           ) : (
+                             <p className="text-xl font-bold text-gray-400">Prezzi da definire</p>
+                           )}
+                        </div>
+                      </div>
 
                       {/* Pulsanti Azione */}
                       {!isLoggedIn ? (
@@ -275,15 +292,6 @@ export default async function CampiPage() {
                             Richiedi informazioni
                           </a>
                         </div>
-                      ) : postiEsauriti ? (
-                        <a
-                          href="mailto:sportessence.asd.aps@gmail.com?subject=Richiesta%20Info%20Campo"
-                          className="flex items-center justify-center gap-2 w-full bg-orange-500 text-white py-4 rounded-xl 
-                            hover:bg-orange-600 hover:shadow-lg transition-all font-bold"
-                        >
-                          <Mail size={20} />
-                          Contattaci (Posti Esauriti)
-                        </a>
                       ) : (
                         <Link
                           href={`/Iscrizione?campo=${camp.id}`}
@@ -333,41 +341,39 @@ export default async function CampiPage() {
         </section>
       )}
 
-{/* --- INFO CONTATTI (Restyled) --- */}
-        <section className="py-12 pt-20 px-6">
-          <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8 text-center border-t-4 border-cyan-600">
-            <h3 className="text-2xl font-bold text-blue-deep mb-2">
-              Hai domande specifiche?
-            </h3>
-            <p className="text-gray-600 mb-6 text-sm md:text-base">
-              Il nostro staff è a disposizione per chiarire ogni dubbio.
-            </p>
+      {/* --- INFO CONTATTI --- */}
+      <section className="py-12 pt-20 px-6">
+        <div className="max-w-7xl mx-auto bg-white rounded-2xl shadow-xl p-8 text-center border-t-4 border-cyan-600">
+          <h3 className="text-2xl font-bold text-blue-deep mb-2">
+            Hai domande specifiche?
+          </h3>
+          <p className="text-gray-600 mb-6 text-sm md:text-base">
+            Il nostro staff è a disposizione per chiarire ogni dubbio.
+          </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              {/* Email Button */}
-              <a
-                href="mailto:sportessence.asd.aps@gmail.com"
-                className="flex items-center gap-2 bg-blue-light text-white px-6 py-3 rounded-xl font-semibold shadow-md
-                  hover:bg-blue-800 hover:-translate-y-1 transition-all text-sm"
-              >
-                <Mail size={18} />
-                Invia Email
-              </a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <a
+              href="mailto:sportessence.asd.aps@gmail.com"
+              className="flex items-center gap-2 bg-blue-light text-white px-6 py-3 rounded-xl font-semibold shadow-md
+                hover:bg-blue-800 hover:-translate-y-1 transition-all text-sm"
+            >
+              <Mail size={18} />
+              Invia Email
+            </a>
 
-              {/* Phone Button */}
-              <a
-                href="tel:+393420394661"
-                className="flex items-center gap-2 bg-white text-blue-deep border-2 border-blue-light px-6 py-3 rounded-xl font-semibold shadow-md
-                  hover:bg-blue-50 hover:-translate-y-1 transition-all text-sm"
-              >
-                <PhoneIcon />
-                342 039 4661
-              </a>
-            </div>
+            <a
+              href="tel:+393420394661"
+              className="flex items-center gap-2 bg-white text-blue-deep border-2 border-blue-light px-6 py-3 rounded-xl font-semibold shadow-md
+                hover:bg-blue-50 hover:-translate-y-1 transition-all text-sm"
+            >
+              <PhoneIcon />
+              342 039 4661
+            </a>
           </div>
-        </section>
+        </div>
+      </section>
 
-      {/* --- ALTRE ATTIVITÀ (Style LezioniIndividuali) --- */}
+      {/* --- ALTRE ATTIVITÀ --- */}
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="bg-blue-light rounded-[2.5rem] p-10 md:p-16 text-center text-white shadow-2xl relative overflow-hidden">
@@ -408,7 +414,6 @@ export default async function CampiPage() {
   );
 }
 
-// Piccolo componente helper per l'icona telefono se non importata da lucide
 function PhoneIcon() {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
