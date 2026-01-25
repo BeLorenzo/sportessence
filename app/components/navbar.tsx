@@ -125,7 +125,6 @@ export default function Navbar({ initialRole }: NavbarProps) {
     admin: [
       { name: "Dashboard", href: "/admin/Dashboard" },
       { name: "Campi Estivi", href: "/admin/Campi" },
-      { name: "Pagamenti", href: "/admin/Pagamenti" },
     ],
   };
 
