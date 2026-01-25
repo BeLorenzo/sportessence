@@ -5,7 +5,8 @@ import { createClient } from "@/app/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
   Calendar, MapPin, Users, CheckCircle, Euro, Info, Clock, 
-  ArrowRight, Loader2, AlertTriangle, Landmark, X, TicketPercent
+  ArrowRight, Loader2, AlertTriangle, Landmark, X, TicketPercent,
+  UserPlus
 } from "lucide-react";
 import { createEnrollment } from "@/app/actions/enrollments";
 
@@ -206,6 +207,79 @@ function IscrizioneContent() {
 
   if (loadingData) return <div className="flex h-screen items-center justify-center bg-cream"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-600"></div></div>;
 
+  if (children.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto py-10 px-4">
+        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+          <div className="bg-amber-500 p-8 text-white relative">
+            <div className="absolute inset-0 bg-[url('/imgs/pattern.png')] opacity-10"></div>
+            <div className="relative z-10 flex items-center gap-4">
+              <div className="bg-white/20 p-4 rounded-2xl">
+                <AlertTriangle size={40} />
+              </div>
+              <div>
+                <h1 className="text-3xl font-extrabold mb-2">Nessun Bambino Registrato</h1>
+                <p className="text-amber-100">Prima di procedere con l'iscrizione è necessario aggiungere almeno un bambino.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="p-10 text-center">
+            <div className="mb-8">
+              <div className="inline-block bg-amber-50 p-6 rounded-full mb-6">
+                <UserPlus size={64} className="text-amber-500" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Aggiungi il tuo primo bambino</h2>
+              <p className="text-gray-600 max-w-md mx-auto mb-2">
+                Per iscrivere un bambino al campo estivo, devi prima registrare i suoi dati nella sezione dedicata.
+              </p>
+              <p className="text-sm text-gray-500">
+                Potrai aggiungere nome, cognome, data di nascita e altre informazioni necessarie.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={() => router.push('/Utente')}
+                className="bg-cyan-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-cyan-700 transition-all shadow-lg hover:shadow-cyan-200/50 flex items-center gap-3 group"
+              >
+                <UserPlus size={20} />
+                Vai alla Sezione Bambini
+                <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+              
+              <button
+                onClick={() => router.push('/')}
+                className="bg-gray-100 text-gray-700 px-8 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all"
+              >
+                Torna alla Home
+              </button>
+            </div>
+
+            <div className="mt-10 pt-8 border-t border-gray-100">
+              <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 max-w-2xl mx-auto">
+                <div className="flex gap-4 items-start">
+                  <Info size={24} className="text-blue-600 shrink-0 mt-1" />
+                  <div className="text-left">
+                    <h3 className="font-bold text-blue-900 mb-2">Cosa serve per l'iscrizione?</h3>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Nome e cognome del bambino</li>
+                      <li>• Data di nascita</li>
+                      <li>• Eventuali note o necessità particolari</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
+
+
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
       <div className="bg-white rounded-3xl shadow-xl overflow-hidden mb-8">
@@ -322,17 +396,28 @@ function IscrizioneContent() {
                             <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                                 {/* Riga 1: Prezzo Settimana */}
                                 <div>
-                                    {isHalf ? (
-                                        // Mezza Giornata: Prezzo secco, niente barrato
-                                        <span className="font-bold text-gray-800">€{currentCampObj?.price_half_day} (Mezza Giornata)</span>
-                                    ) : (
-                                        // Intera: Prezzo Base Barrato -> Tier Attuale
-                                        <>
-                                            <span className="line-through text-gray-400 mr-2">€{currentCampObj?.prezzo_base_indicativo}</span>
-                                            <span className="font-bold text-gray-800">€{appliedTierPrice}</span>
-                                        </>
-                                    )}
-                                </div>
+    {isHalf ? (
+        // Mezza Giornata
+        <span className="font-bold text-gray-800">
+            €{currentCampObj?.price_half_day} (Mezza Giornata)
+        </span>
+    ) : (
+        // Intera Giornata
+        <>
+            {/* Mostra il barrato SOLO se il prezzo applicato è inferiore al base */}
+            {appliedTierPrice < (currentCampObj?.prezzo_base_indicativo ?? 0) && (
+                <span className="line-through text-gray-400 mr-2">
+                    €{currentCampObj?.prezzo_base_indicativo ?? 0}
+                </span>
+            )}
+            
+            {/* Il prezzo finale lo mostriamo SEMPRE */}
+            <span className="font-bold text-gray-800">
+                €{appliedTierPrice}
+            </span>
+        </>
+    )}
+</div>
                                 {/* Riga 2: Extra */}
                                 {extrasVal > 0 && (
                                     <div className="text-cyan-700 font-medium">

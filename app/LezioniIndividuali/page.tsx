@@ -20,6 +20,7 @@ export default function LezioniIndividuali() {
             alt="Lezioni di Calcio"
             fill
             className="object-cover transition-transform duration-1000 group-hover:scale-110"
+            style={{objectPosition: "50% 37%"}}
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-blue-900/90 to-transparent flex flex-col justify-end md:justify-center p-8 md:p-12">

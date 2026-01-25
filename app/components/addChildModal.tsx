@@ -319,9 +319,6 @@ export default function AddChildModal({
             {!validations.cf && formData.cf && (
               <p className="text-red-500 text-xs mt-1">16 caratteri (es: RSSMRA90A01F205X)</p>
             )}
-            <p className="text-gray-500 text-xs mt-1">
-              Formato: 6 lettere + 2 numeri + 1 lettera + 2 numeri + 1 lettera + 3 numeri + 1 lettera
-            </p>
           </div>
 
           {/* Data di Nascita e Taglia */}
