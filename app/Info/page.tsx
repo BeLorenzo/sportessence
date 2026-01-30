@@ -139,7 +139,7 @@ export default function InfoUtili() {
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
                   I costi variano in base al tipo di campo e alla durata. Indicativamente, 
-                  una settimana costa tra €150 e €220. Nella pagina di ciascun campo trovi 
+                  una settimana costa intorno ai 130€. Nella pagina di ciascun campo trovi 
                   i dettagli specifici. Offriamo sconti per fratelli e per iscrizioni multiple.
                 </p>
               </div>
@@ -160,8 +160,7 @@ export default function InfoUtili() {
                   Ci sono sconti per fratelli?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  <strong>Sì!</strong> Offriamo uno sconto del 10% sul secondo figlio e del 15% dal terzo in poi, 
-                  quando iscritti per lo stesso periodo. Lo sconto viene applicato automaticamente 
+                  <strong>Sì!</strong> Offriamo uno sconto del 10% dal secondo figlio in poi. Lo sconto viene applicato automaticamente 
                   al momento del calcolo della quota.
                 </p>
               </div>
@@ -171,9 +170,7 @@ export default function InfoUtili() {
                   Posso cancellare l'iscrizione?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Le cancellazioni comunicate almeno 30 giorni prima dell'inizio prevedono 
-                  il rimborso totale. Per cancellazioni tra i 30 e i 15 giorni prima, si trattiene 
-                  il 30% a titolo di penale. Oltre questo termine non sono previsti rimborsi.
+                  Non sono previsti rimborsi.
                 </p>
               </div>
             </div>

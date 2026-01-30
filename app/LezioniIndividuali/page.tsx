@@ -41,9 +41,15 @@ export default function LezioniIndividuali() {
         {/* LATO DESTRO: BASKET (Corretto - Basso a SX su Mobile, Centro DX su Desktop) */}
         {/* Modifica 1: flex-col, justify-end (mobile) -> md:justify-center (desktop) */}
         <div className="relative w-full md:w-1/2 h-1/2 md:h-full bg-orange-600 flex flex-col justify-end md:justify-center group overflow-hidden border-t-4 md:border-t-0 md:border-l-4 border-white">
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:20px_20px]"></div>
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-red-700 opacity-90"></div>
-            
+            <Image
+            src="/imgs/lezioneBasket.JPG"
+            alt="Lezioni di Basket"
+            fill
+            className="object-cover transition-transform duration-1000 group-hover:scale-110"
+            style={{objectPosition: "50% 37%"}}
+            priority
+          />
+<div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-l from-orange-900/90 to-transparent"></div>            
             {/* Modifica 2: Rimosso items-center, aggiunto padding coerente */}
             <div className="relative z-10 w-full p-8 md:p-12">
                 {/* Modifica 3: items-start/text-left (mobile) -> md:items-end/md:text-right (desktop) */}

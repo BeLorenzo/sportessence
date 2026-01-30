@@ -36,7 +36,7 @@ export default function Home() {
                 Chi Siamo
               </h2>
               <p className="text-gray-700 text-lg leading-relaxed">
-                Fondata nel XXXX, SPORTESSENCE si dedica a creare esperienze indimenticabili
+                Fondata nel 2023, SPORTESSENCE si dedica a creare esperienze indimenticabili
                 per bambini e ragazzi. Grazie alla nostra passione per lo sport, la creatività
                 e il divertimento, ogni estate trasformiamo il gioco in apprendimento e amicizia.
               </p>
@@ -90,10 +90,10 @@ export default function Home() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { label: "Anni di Esperienza", value: "10" },
-              { label: "Bambini Felici", value: "10.000+" },
+              { label: "Anni di Esperienza", value: "5" },
+              { label: "Bambini Felici", value: "5.000+" },
               { label: "Educatori Qualificati", value: "50+" },
-              { label: "Settimane di Campo", value: "200+" }
+              { label: "Settimane di Campo", value: "50+" }
             ].map(({ label, value }) => (
               <div 
                 key={label} 
@@ -220,19 +220,12 @@ export default function Home() {
               <div className="flex flex-col md:flex-row">
                 {/* Immagine Placeholder Basket */}
                 <div className="relative h-64 md:h-auto md:w-2/5 bg-orange-100 flex items-center justify-center">
-                  {/* Sostituisci questo div con Image quando avrai la foto */}
-                  <div className="absolute inset-0 bg-orange-500/10"></div>
-                  <span className="text-orange-600 font-bold text-xl z-10 uppercase tracking-widest">
-                    Foto Basket
-                  </span>
-                  {/* Se vuoi usare un'immagine di placeholder esterna temporanea, scommenta sotto: */}
-                  {/* <Image 
-                        src="https://placehold.co/600x400/orange/white?text=Basket" 
-                        alt="Basket Placeholder" 
-                        fill 
-                        className="object-cover" 
-                      /> 
-                  */}
+                  <Image
+                    src="/imgs/lezioneBasket.JPG"
+                    alt="Lezione Basket"
+                    fill
+                    className="object-cover"
+                  />
                 </div>
                 
                 <div className="p-8 md:w-3/5 flex flex-col justify-center">
