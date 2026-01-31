@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signup, verifySignupOTP } from "@/app/actions/auth";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function Registrazione() {
   const router = useRouter();
   const [step, setStep] = useState<"form" | "otp">("form");
   const [registeredEmail, setRegisteredEmail] = useState("");
-  
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     email: "",
     nome: "",
@@ -143,6 +145,12 @@ export default function Registrazione() {
       return;
     }
 
+    if (!turnstileToken) {
+      showAlert("Attendi la verifica di sicurezza");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const signupData = {
         email: form.email,
@@ -157,12 +165,14 @@ export default function Registrazione() {
         cap: form.cap,
         paese: form.paese,
         provincia: form.provincia,
+        recaptchaToken: turnstileToken,
       };
 
       const res = await signup(signupData);
 
       if (res?.error) {
         showAlert(res.error);
+        setTurnstileToken(null);
       } else if (res?.needsVerification) {
         // ✅ NUOVO: Passa allo step di verifica OTP
         setRegisteredEmail(form.email);
@@ -455,11 +465,21 @@ export default function Registrazione() {
                 </div>
               </div>
 
+{/* WIDGET CLOUDFLARE TURNSTILE */}
+              <div className="flex justify-center py-2">
+                <Turnstile 
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
+                  onSuccess={(token) => setTurnstileToken(token)}
+                  onExpire={() => setTurnstileToken(null)}
+                  options={{ theme: 'light' }}
+                />
+              </div>
+              
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !turnstileToken}
                 className={`w-full bg-cyan-600 text-white py-3 rounded-lg shadow-md hover:bg-cyan-700 transition-all font-semibold ${
-                  isSubmitting ? "opacity-60 cursor-not-allowed" : ""
+                  (isSubmitting || !turnstileToken) ? "opacity-60 cursor-not-allowed" : ""
                 }`}
               >
                 {isSubmitting ? "Registrazione in corso..." : "Registrati"}

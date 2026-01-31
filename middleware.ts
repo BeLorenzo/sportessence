@@ -89,7 +89,7 @@ export async function middleware(request: NextRequest) {
 
   // 4. PROTEZIONE ROTTE UTENTE (Tua logica originale standard)
   // Nota: In manutenzione questo codice non viene nemmeno raggiunto dai non-admin perché bloccati prima
-  const userProtectedRoutes = ['/Utente', '/Iscrizione']
+  const userProtectedRoutes = ['/Utente', '/Iscrizione', '/Iscrizioni']
   const isUserProtectedRoute = userProtectedRoutes.some(route => path.startsWith(route))
   
   if (isUserProtectedRoute) {

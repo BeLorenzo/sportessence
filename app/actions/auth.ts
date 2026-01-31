@@ -19,7 +19,8 @@ export async function signup(formData: any) {
     civico,
     cap,
     paese,
-    provincia
+    provincia,
+    recaptchaToken
   } = formData
 
   // ✅ NUOVO: Crea utente SENZA auto-conferma
@@ -31,6 +32,7 @@ export async function signup(formData: any) {
       // ⚠️ NON usiamo emailRedirectTo perché non vogliamo link!
       // Supabase invierà automaticamente un OTP alla email
       emailRedirectTo: undefined,
+      captchaToken: recaptchaToken
     }
   })
 
@@ -102,18 +104,32 @@ export async function verifySignupOTP(formData: FormData) {
 
 // --- LOGIN NORMALE CON PASSWORD (non cambia!) ---
 export async function login(formData: FormData) {
+  
   const supabase = await createClient()
 
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const token = formData.get('recaptchaToken') as string
 
   // Login normale con password
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
+    options: {
+      captchaToken: token 
+    }
   })
 
   if (error) {
+    // --- AGGIUNGI QUESTO LOG ---
+    console.error("ERRORE SUPABASE LOGIN:", error.message); 
+    // ---------------------------
+    
+    // Se l'errore è "Email not confirmed", dillo all'utente (o gestiscilo)
+    if (error.message.includes("Email not confirmed")) {
+        return { error: "Devi confermare la tua email prima di accedere." }
+    }
+
     return { error: "Email o password errati" }
   }
 

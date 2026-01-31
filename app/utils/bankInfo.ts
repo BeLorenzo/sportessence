@@ -1,8 +1,7 @@
 export const BANK_INFO = {
-  intestatario: "Sport Essence ASD",
+  intestatario: "Sport Essence",
   banca: "Banca Popolare di Como",
-  iban: "IT 88 K 05034 10900 000000123456", // Esempio fittizio
-  bic_swift: "BPCOIT22XXX"
+  iban: "IT56I0306909606100000409540",
 };
 
 export const getCausale = (

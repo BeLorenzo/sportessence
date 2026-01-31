@@ -2,30 +2,86 @@
 
 import { createClient } from "@/app/utils/supabase/server";
 import { revalidatePath } from "next/cache";
+import { Resend } from "resend";
+import PaymentConfirmEmail from "../components/emails/ricevutaPronta";
+
+const resend = new Resend(process.env.RESEND_API_KEY)
 
 // 1. REGISTRA PAGAMENTO
 export async function registerPayment(enrollmentId: string, amountToAdd: number) {
   const supabase = await createClient();
   
-  // Prima prendiamo il valore attuale
+  // 1. Recupero dati
   const { data: current, error: fetchError } = await supabase
     .from('enrollments')
-    .select('pagato')
+    .select(`
+      id, pagato, prezzo_totale, stato,
+      children (nome, cognome),
+      profiles (nome, cognome, email_contatti),
+      camps (nome)
+    `)
     .eq('id', enrollmentId)
     .single();
     
   if (fetchError || !current) return { success: false, error: "Iscrizione non trovata" };
 
-  const newTotal = (current.pagato || 0) + amountToAdd;
+  // Spacchettamento array
+  const profile = Array.isArray(current.profiles) ? current.profiles[0] : current.profiles;
+  const child = Array.isArray(current.children) ? current.children[0] : current.children;
+  const camp = Array.isArray(current.camps) ? current.camps[0] : current.camps;
 
-  const { error } = await supabase
+  if (!profile || !child || !camp) {
+    return { success: false, error: "Dati profilo, bambino o campo mancanti" };
+  }
+
+  const currentPaid = current.pagato || 0;
+  const newTotal = currentPaid + amountToAdd;
+  const isSaldato = newTotal >= current.prezzo_totale;
+  const newStatus = isSaldato ? 'saldato' : (current.stato || 'acconto');
+
+  // 2. Aggiornamento DB
+  const { error: updateError } = await supabase
     .from('enrollments')
-    .update({ pagato: newTotal })
+    .update({ 
+      pagato: newTotal,
+      stato_pagamento: newStatus,
+      updated_at: new Date().toISOString()
+    })
     .eq('id', enrollmentId);
 
-  if (error) return { success: false, error: error.message };
+  if (updateError) return { success: false, error: updateError.message };
+
+  // 3. INVIO EMAIL (Solo se saldato)
+  if (isSaldato) {
+    try {
+      const parentName = `${profile.nome} ${profile.cognome}`;
+      const childName = `${child.nome} ${child.cognome}`;
+      const dateStr = new Date().toLocaleDateString('it-IT');
+      
+      const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sportessence.it'}/Utente`;
+
+      await resend.emails.send({
+        from: 'Sport Essence <noReply@sportessence.it>',
+        to: [profile.email_contatti],
+        subject: `Conferma Saldo - ${childName}`,
+        react: PaymentConfirmEmail({
+            parentName,
+            childName,
+            campName: camp.nome,
+            amount: newTotal,
+            paymentDate: dateStr,
+            dashboardUrl: dashboardUrl
+        }) as any,
+      });
+
+    } catch (emailErr) {
+      console.error("Errore invio email:", emailErr);
+      // Non blocchiamo, logghiamo solo
+      revalidatePath('/admin');
+      return { success: true, warning: "Pagamento salvato, ma errore email." };
+    }
+  }
   
-  // Aggiorna la cache della pagina per vedere subito il cambiamento
   revalidatePath('/admin'); 
   return { success: true };
 }

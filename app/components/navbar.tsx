@@ -95,7 +95,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
       }
       setRole("guest");
       router.refresh();
-      window.location.href = "/";
+      window.location.href = "/Login";
     } catch (err) {
       console.error("Errore logout:", err);
       window.location.href = "/";

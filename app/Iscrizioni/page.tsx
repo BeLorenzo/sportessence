@@ -3,7 +3,7 @@
 import { createClient } from "@/app/utils/supabase/client";
 import { useEffect, useState, useMemo } from "react";
 import { Download, Calendar, FileText, Euro, ChevronDown, ChevronUp, Clock, Filter, X, User } from "lucide-react";
-import { PDFDownloadLink } from "@react-pdf/renderer";
+import { pdf } from "@react-pdf/renderer";
 import { RicevutaPDF, RicevutaData } from "../components/ricevutaPDF";
 
 export default function StoricoIscrizioniPage() {
@@ -11,6 +11,7 @@ export default function StoricoIscrizioniPage() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState<string | null>(null); // Traccia quale PDF si sta scaricando
   
   // --- STATO FILTRI ---
   const [filters, setFilters] = useState({
@@ -21,8 +22,6 @@ export default function StoricoIscrizioniPage() {
   });
 
   const supabase = createClient();
-
-
 
   useEffect(() => {
     const loadData = async () => {
@@ -77,6 +76,45 @@ export default function StoricoIscrizioniPage() {
       else newSet.add(id);
       return newSet;
     });
+  };
+
+  // --- FUNZIONE PER GENERARE E SCARICARE IL PDF AL CLICK ---
+  const handleDownloadPdf = async (enrollment: any) => {
+    if (!userProfile) return;
+    
+    setDownloadingPdf(enrollment.id);
+    
+    try {
+      const ricevutaData: RicevutaData = {
+        dataPagamento: new Date(enrollment.updated_at || enrollment.created_at).toLocaleDateString('it-IT'),
+        dataEmissione: new Date().toLocaleDateString('it-IT'),
+        genitore: `${userProfile.nome} ${userProfile.cognome}`.toUpperCase(),
+        bambino: `${enrollment.children.nome} ${enrollment.children.cognome}`.toUpperCase(),
+        codiceFiscale: enrollment.children.cf?.toUpperCase() || "N/D",
+        importo: enrollment.prezzo_totale,
+        nomeCampo: enrollment.camps.nome,
+        causale: `Saldo ${enrollment.camps.nome} ${new Date(enrollment.camps.data_inizio).getFullYear()}`
+      };
+
+      // Genera il PDF
+      const blob = await pdf(<RicevutaPDF data={ricevutaData} />).toBlob();
+      
+      // Crea un link temporaneo e triggera il download
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Ricevuta_${enrollment.children.cognome}_${enrollment.id.slice(0,4)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error("Errore generazione PDF:", error);
+      alert("Errore durante la generazione del PDF");
+    } finally {
+      setDownloadingPdf(null);
+    }
   };
 
   // --- HELPER LOGIC ---
@@ -173,64 +211,68 @@ export default function StoricoIscrizioniPage() {
         </div>
 
         {/* --- BARRA DEI FILTRI RESPONSIVE --- */}
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4">
-          <div className="flex flex-col gap-3">
-            
-            <div className="flex items-center gap-2 text-gray-500 font-bold text-sm">
-              <Filter size={16} /> Filtra per:
-            </div>
+        <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-100 mb-4">
+  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+    
+    {/* Label Filtri */}
+    <div className="flex items-center gap-2 text-gray-600 font-semibold text-xs md:text-sm whitespace-nowrap">
+      <Filter size={14} className="md:w-4 md:h-4" /> 
+      Filtri:
+    </div>
 
-            {/* Grid layout per i filtri su mobile */}
-            <div className="grid grid-cols-2 lg:flex lg:flex-wrap gap-2 md:gap-3 w-full">
-              
-              <select 
-                value={filters.status}
-                onChange={(e) => setFilters({...filters, status: e.target.value})}
-                className="col-span-2 md:col-span-1 bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 outline-none w-full"
-              >
-                <option value="ALL">Tutti gli stati</option>
-                <option value="TO_PAY">Da Saldare</option>
-                <option value="PAID">Saldati</option>
-              </select>
+    {/* Filtro Stato */}
+    <select 
+      value={filters.status}
+      onChange={(e) => setFilters({...filters, status: e.target.value})}
+      className="text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 px-3 py-1.5 md:py-2 outline-none transition-all hover:border-cyan-400"
+    >
+      <option value="ALL">Tutti gli stati</option>
+      <option value="TO_PAY">Da Saldare</option>
+      <option value="PAID">Saldati</option>
+    </select>
 
-              <select 
-                value={filters.year}
-                onChange={(e) => setFilters({...filters, year: e.target.value})}
-                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 outline-none w-full"
-              >
-                <option value="ALL">Tutti gli anni</option>
-                {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
+    {/* Filtro Anno */}
+    <select 
+      value={filters.year}
+      onChange={(e) => setFilters({...filters, year: e.target.value})}
+      className="text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 px-3 py-1.5 md:py-2 outline-none transition-all hover:border-cyan-400"
+    >
+      <option value="ALL">Tutti gli anni</option>
+      {filterOptions.years.map(y => <option key={y} value={y}>{y}</option>)}
+    </select>
 
-              <select 
-                value={filters.child}
-                onChange={(e) => setFilters({...filters, child: e.target.value})}
-                className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 outline-none w-full"
-              >
-                <option value="ALL">Tutti i bambini</option>
-                {filterOptions.children.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+    {/* Filtro Bambino */}
+    <select 
+      value={filters.child}
+      onChange={(e) => setFilters({...filters, child: e.target.value})}
+      className="text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 px-3 py-1.5 md:py-2 outline-none transition-all hover:border-cyan-400 max-w-[180px] md:max-w-none"
+    >
+      <option value="ALL">Tutti i bambini</option>
+      {filterOptions.children.map(c => <option key={c} value={c}>{c}</option>)}
+    </select>
 
-               <select 
-                value={filters.camp}
-                onChange={(e) => setFilters({...filters, camp: e.target.value})}
-                className="col-span-2 md:col-span-1 bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block p-2.5 outline-none w-full truncate"
-              >
-                <option value="ALL">Tutti i campi</option>
-                {filterOptions.camps.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
+    {/* Filtro Campo */}
+    <select 
+      value={filters.camp}
+      onChange={(e) => setFilters({...filters, camp: e.target.value})}
+      className="text-xs md:text-sm bg-gray-50 border border-gray-200 text-gray-700 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 px-3 py-1.5 md:py-2 outline-none transition-all hover:border-cyan-400 max-w-[200px] md:max-w-[250px]"
+    >
+      <option value="ALL">Tutti i campi</option>
+      {filterOptions.camps.map(c => <option key={c} value={c} className="truncate">{c}</option>)}
+    </select>
 
-            {hasActiveFilters && (
-              <button 
-                onClick={resetFilters}
-                className="w-full md:w-auto flex items-center justify-center gap-1 text-red-500 text-sm font-bold hover:bg-red-50 px-3 py-2 rounded-lg transition-colors"
-              >
-                <X size={16} /> Rimuovi Filtri
-              </button>
-            )}
-          </div>
-        </div>
+    {/* Bottone Reset Filtri */}
+    {hasActiveFilters && (
+      <button 
+        onClick={resetFilters}
+        className="ml-auto flex items-center gap-1.5 text-red-500 text-xs md:text-sm font-semibold hover:bg-red-50 px-3 py-1.5 md:py-2 rounded-lg transition-all border border-transparent hover:border-red-200"
+      >
+        <X size={14} className="md:w-4 md:h-4" /> 
+        <span className="hidden sm:inline">Reset</span>
+      </button>
+    )}
+  </div>
+</div>
         
         {/* --- LISTA ISCRIZIONI --- */}
         <div className="space-y-3 md:space-y-4">
@@ -395,48 +437,25 @@ export default function StoricoIscrizioniPage() {
                           </div>
                           
                           <div className="pt-3 border-t border-gray-200">
-  {isPaid && userProfile ? (
-        (() => {
-          // Creiamo l'oggetto dati QUI, usando userProfile + enrollment
-          const ricevutaData: RicevutaData = {
-            // Usa updated_at se esiste (data saldo), altrimenti created_at
-            dataPagamento: new Date(enrollment.updated_at || enrollment.created_at).toLocaleDateString('it-IT'),
-            dataEmissione: new Date().toLocaleDateString('it-IT'),
-            // DATI GENITORE DAL PROFILO
-            genitore: `${userProfile.nome} ${userProfile.cognome}`.toUpperCase(),
-            // DATI BAMBINO DALL'ISCRIZIONE
-            bambino: `${enrollment.children.nome} ${enrollment.children.cognome}`.toUpperCase(),
-            codiceFiscale: enrollment.children.cf?.toUpperCase() || "N/D",
-            importo: enrollment.prezzo_totale,
-            nomeCampo: enrollment.camps.nome,
-            causale: `Saldo ${enrollment.camps.nome} ${new Date(enrollment.camps.data_inizio).getFullYear()}`
-          };
-
-          return (
-            <PDFDownloadLink
-              document={<RicevutaPDF data={ricevutaData} />}
-              fileName={`Ricevuta_${enrollment.children.cognome}_${enrollment.id.slice(0,4)}.pdf`}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all font-bold bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm text-sm"
-            >
-              {({ loading }) => (
-                <>
-                  <Download size={16} />
-                  {loading ? "Generazione..." : "Scarica Ricevuta"}
-                </>
-              )}
-            </PDFDownloadLink>
-          );
-        })()
-      ) : (
-        <button 
-          disabled
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed font-bold text-sm"
-        >
-          <Download size={16} />
-          {isPaid ? "Caricamento dati..." : "Ricevuta non disp."}
-        </button>
-      )}
-</div>
+                            {isPaid && userProfile ? (
+                              <button
+                                onClick={() => handleDownloadPdf(enrollment)}
+                                disabled={downloadingPdf === enrollment.id}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all font-bold bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Download size={16} />
+                                {downloadingPdf === enrollment.id ? "Generazione..." : "Scarica Ricevuta"}
+                              </button>
+                            ) : (
+                              <button 
+                                disabled
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gray-100 text-gray-400 cursor-not-allowed font-bold text-sm"
+                              >
+                                <Download size={16} />
+                                {isPaid ? "Caricamento dati..." : "Ricevuta non disp."}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>

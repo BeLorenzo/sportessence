@@ -1,35 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/app/actions/auth";
-import { executeRecaptcha } from "@/app/utils/recaptcha";
+import { Turnstile } from '@marsidev/react-turnstile'; // Assicurati di aver installato: npm install @marsidev/react-turnstile
 
 export default function Login() {
   const router = useRouter();
+  
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const [alertType, setAlertType] = useState<"error" | "success">("error");
-  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
-
-  useEffect(() => {
-    // Carica reCAPTCHA quando il componente monta
-    const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
-    if (siteKey) {
-      const script = document.createElement('script');
-      script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => setRecaptchaLoaded(true);
-      document.head.appendChild(script);
-    } else {
-      setRecaptchaLoaded(true); // Continua senza reCAPTCHA se non configurato
-    }
-  }, []);
+  
+  // Stato per il token di Cloudflare
+  const [token, setToken] = useState<string | null>(null);
 
   const handleChange = (e: { target: { name: string; value: string } }) => {
     const { name, value } = e.target;
@@ -52,42 +41,38 @@ export default function Login() {
       return;
     }
 
-    try {
-      // 1. Esegui reCAPTCHA (se configurato)
-      let recaptchaToken = null;
-      if (process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-        recaptchaToken = await executeRecaptcha('login');
-        if (!recaptchaToken) {
-          showAlert("Errore verifica di sicurezza. Riprova.");
-          setIsSubmitting(false);
-          return;
-        }
-      }
+    // Controllo Token Cloudflare
+    if (!token) {
+      showAlert("Attendi la verifica di sicurezza (Cloudflare)");
+      setIsSubmitting(false);
+      return;
+    }
 
-      // 2. Prepara FormData
+    try {
+      // Prepara FormData
       const formData = new FormData();
       formData.append("email", form.email);
       formData.append("password", form.password);
-      if (recaptchaToken) {
-        formData.append("recaptchaToken", recaptchaToken);
-      }
+      // Passiamo il token con lo stesso nome che si aspetta la tua Server Action
+      formData.append("recaptchaToken", token);
 
-      // 3. Chiama la Server Action
+      // Chiama la Server Action
       const result = await login(formData);
 
       if (result?.error) {
         showAlert(result.error);
         setIsSubmitting(false);
+        // Resetta il widget in caso di errore (opzionale, ma consigliato)
+        setToken(null); 
         return;
       }
 
-      // 4. Login riuscito! Redirect in base al ruolo
+      // Login riuscito!
       if (result?.success && result?.role) {
-  const targetUrl = result.role === 'admin' ? '/admin/Dashboard' : '/Utente'; // O alla home
-  
-  router.refresh(); 
-  router.push(targetUrl); 
-} 
+        const targetUrl = result.role === 'admin' ? '/admin/Dashboard' : '/Utente';
+        router.refresh(); 
+        router.push(targetUrl); 
+      } 
       
     } catch (error: any) {
       console.error("Login error:", error);
@@ -149,15 +134,28 @@ export default function Login() {
             />
           </div>
 
+          {/* WIDGET CLOUDFLARE TURNSTILE */}
+          <div className="flex justify-center py-2">
+            <Turnstile 
+  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
+  onSuccess={(token) => setToken(token)}
+  options={{
+    appearance: 'always', // Forza l'esecuzione
+    theme: 'light',
+  }}
+/>
+          </div>
+
           <button
             type="submit"
-            disabled={isSubmitting || !recaptchaLoaded}
+            // Disabilitato se sta caricando o se non c'è il token Cloudflare
+            disabled={isSubmitting || !token}
             className={`w-full bg-cyan-600 text-white py-3 rounded-lg shadow-md 
               hover:-translate-y-1 hover:shadow-xl hover:bg-cyan-700 hover:cursor-pointer
               transition-all duration-300 ease-out font-semibold
-              ${isSubmitting || !recaptchaLoaded ? "opacity-60 cursor-not-allowed" : ""}`}
+              ${(isSubmitting || !token) ? "opacity-60 cursor-not-allowed" : ""}`}
           >
-            {isSubmitting ? "Accesso in corso..." : !recaptchaLoaded ? "Caricamento..." : "Accedi"}
+            {isSubmitting ? "Accesso in corso..." : !token ? "Verifica in corso..." : "Accedi"}
           </button>
         </form>
 
@@ -175,31 +173,6 @@ export default function Login() {
             </a>
           </p>
         </div>
-
-        {/* reCAPTCHA Badge Info */}
-        {process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY && (
-          <p className="text-xs text-gray-500 text-center mt-6">
-            Questo sito è protetto da reCAPTCHA e si applicano la{" "}
-            <a
-              href="https://policies.google.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              Privacy Policy
-            </a>{" "}
-            e i{" "}
-            <a
-              href="https://policies.google.com/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              Termini di Servizio
-            </a>{" "}
-            di Google.
-          </p>
-        )}
       </div>
     </main>
   );

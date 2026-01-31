@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@marsidev/react-turnstile": "^1.4.1",
     "@react-email/components": "^1.0.6",
     "@react-email/render": "^2.0.4",
     "@react-pdf/renderer": "^4.3.2",
