@@ -41,7 +41,7 @@ export default function Footer() {
 
           {/* Info legali */}
           <div className="flex flex-col items-center text-center">
-            <h5 className="font-bold uppercase mb-3">Sportessence Asd APS</h5>
+            <h5 className="font-bold uppercase mb-3">SportEssence Asd APS</h5>
             <ul className="text-sm space-y-1">
               <li>
                 <span className="text-white/80">P.IVA:</span>{" "}

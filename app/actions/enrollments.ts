@@ -120,7 +120,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
 
     if (profile && child && camp) {
       await resend.emails.send({
-        from: 'Sportessence <noreply@sportessence.it>', // Metti la tua mail verificata
+        from: 'SportEssence <noreply@sportessence.it>', // Metti la tua mail verificata
         to: [profile.email],
         subject: `Conferma Iscrizione - ${child.nome} ${child.cognome}`,
         react: ConfirmEmail({

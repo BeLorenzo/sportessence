@@ -44,16 +44,16 @@ const teamMembers = [
   {
     name: "Stefano Caldrer",
     role: "Socio e Segretario Generale",
-    image: "/imgs/team/stefanoCaldrer.png",
+    image: "/imgs/team/StefanoCaldrer.jpeg",
     bio: "Il punto di riferimento per le famiglie. Stefano gestisce la segreteria e le relazioni esterne con pazienza e disponibilità. È la voce amica che accoglie i genitori e risolve ogni dubbio, assicurando una comunicazione limpida e puntuale tra l'organizzazione e le famiglie.",
     quote: "L'accoglienza inizia dal primo sorriso e dalla prima risposta chiara che diamo a un genitore.",
     tags: ["Segreteria", "Relazioni Esterne", "Accoglienza"],
     color: "orange"
   },
   {
-    name: "Fulvio", 
+    name: "Fulvio Ronconi", 
     role: "Coordinatore Attività",
-    image: "/imgs/team/fulvio.png",
+    image: "/imgs/team/FulvioRonconi.jpeg",
     bio: "Un vulcano di energia sul campo. Fulvio coordina le squadre degli animatori assicurandosi che il ritmo delle giornate sia sempre alto e coinvolgente. Esperto nella gestione dei gruppi, sa cogliere le dinamiche tra i ragazzi per favorire l'integrazione e il divertimento di tutti.",
     quote: "Un gruppo unito è la forza più grande. Qui nessuno rimane in panchina.",
     tags: ["Coordinamento", "Team Building", "Animazione"],

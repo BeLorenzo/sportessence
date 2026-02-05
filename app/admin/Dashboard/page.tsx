@@ -40,14 +40,14 @@ export default async function AdminDashboardPage() {
   // C. Profili Genitori
   const { data: profiles } = await supabase
     .from('profiles')
-    .select('id, nome, cognome, email, telefono');
+    .select('id, nome, cognome, email, telefono, indirizzo_via, indirizzo_civico, indirizzo_paese, indirizzo_cap');
 
   // D. Iscrizioni
   const { data: enrollments, error: enrollError } = await supabase
     .from('enrollments')
     .select(`
       *,
-      children (id, nome, cognome, parent_id), 
+      children (id, nome, cognome, parent_id, cf, data_nascita, taglia_maglietta, intolleranze),
       camps (id, nome, membership_type), 
       enrollment_weeks (
         id,
