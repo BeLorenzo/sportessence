@@ -41,7 +41,7 @@ export default function InfoUtili() {
                   👥 Età Partecipanti
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Accettiamo bambini e ragazzi dai 6 ai 21 anni. I gruppi sono 
+                  Accettiamo bambini e ragazzi dai 3 ai 18 anni. I gruppi sono 
                   organizzati per fasce d'età per garantire attività appropriate 
                   e stimolanti per tutti.
                 </p>
@@ -62,7 +62,7 @@ export default function InfoUtili() {
                   🍽️ Pranzo e Merende
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Il pranzo è incluso nella quota e preparato da una mensa convenzionata 
+                  Il pranzo è preparato da una mensa convenzionata 
                   con menù bilanciati e approvati da nutrizionisti. Sono disponibili 
                   menù per esigenze alimentari speciali (celiachia, allergie, vegetariani).
                   Le merende di metà mattina e pomeriggio sono fornite dall'organizzazione.
@@ -94,7 +94,7 @@ export default function InfoUtili() {
                   Qual è l'età minima per partecipare?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  I nostri campi estivi accolgono bambini e ragazzi <strong>dai 6 ai 21 anni</strong>. 
+                  I nostri campi estivi accolgono bambini e ragazzi <strong>dai 3 ai 18 anni</strong>. 
                   I gruppi sono organizzati per fasce d'età per garantire attività appropriate 
                   e stimolanti per tutti.
                 </p>
@@ -105,7 +105,7 @@ export default function InfoUtili() {
                   Quando aprono le iscrizioni?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Le iscrizioni aprono generalmente a marzo per la stagione estiva. 
+                  Le iscrizioni aprono generalmente a Febbraio per la stagione estiva. 
                   Ti consigliamo di iscriverti il prima possibile perché i posti sono limitati 
                   e le settimane più richieste si riempiono velocemente.
                 </p>
@@ -124,22 +124,11 @@ export default function InfoUtili() {
 
               <div className="border-l-4 border-cyan-600 pl-6 py-3 hover:bg-cyan-50 transition-colors rounded-r-lg">
                 <h3 className="text-lg font-semibold text-blue-deep mb-2">
-                  Serve il certificato medico?
-                </h3>
-                <p className="text-gray-700 leading-relaxed">
-                  <strong>Sì, è obbligatorio</strong> per legge per partecipare alle attività sportive. 
-                  Deve essere rilasciato da un medico di base o da un medico sportivo e 
-                  avere validità annuale. Va consegnato il primo giorno di campo.
-                </p>
-              </div>
-
-              <div className="border-l-4 border-cyan-600 pl-6 py-3 hover:bg-cyan-50 transition-colors rounded-r-lg">
-                <h3 className="text-lg font-semibold text-blue-deep mb-2">
                   Quali sono i costi?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
                   I costi variano in base al tipo di campo e alla durata. Indicativamente, 
-                  una settimana costa intorno ai 130€. Nella pagina di ciascun campo trovi 
+                  una settimana costa intorno ai 100€. Nella pagina di ciascun campo trovi 
                   i dettagli specifici. Offriamo sconti per fratelli e per iscrizioni multiple.
                 </p>
               </div>
@@ -150,8 +139,8 @@ export default function InfoUtili() {
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
                   Dopo aver completato l'iscrizione online, riceverai le istruzioni per il 
-                  pagamento via bonifico bancario. È richiesto un acconto del 30% al momento 
-                  dell'iscrizione, il saldo va versato entro 15 giorni prima dell'inizio del campo.
+                  pagamento via bonifico bancario. È richiesto un acconto di 15€ al momento 
+                  dell'iscrizione in modo da confermarla. Il saldo va versato entro 15 giorni prima dell'inizio del campo.
                 </p>
               </div>
 
@@ -160,17 +149,8 @@ export default function InfoUtili() {
                   Ci sono sconti per fratelli?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  <strong>Sì!</strong> Offriamo uno sconto del 10% dal secondo figlio in poi. Lo sconto viene applicato automaticamente 
+                  <strong>Sì!</strong> Offriamo uno sconto dal secondo figlio in poi. Lo sconto viene applicato automaticamente 
                   al momento del calcolo della quota.
-                </p>
-              </div>
-
-              <div className="border-l-4 border-cyan-600 pl-6 py-3 hover:bg-cyan-50 transition-colors rounded-r-lg">
-                <h3 className="text-lg font-semibold text-blue-deep mb-2">
-                  Posso cancellare l'iscrizione?
-                </h3>
-                <p className="text-gray-700 leading-relaxed">
-                  Non sono previsti rimborsi.
                 </p>
               </div>
             </div>
@@ -191,8 +171,6 @@ export default function InfoUtili() {
                   Per completare l'iscrizione sono necessari:
                 </p>
                 <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
-                  <li>Certificato medico per attività sportiva non agonistica</li>
-                  <li>Fotocopia della tessera sanitaria del bambino/ragazzo</li>
                   <li>Modulo di autorizzazione compilato e firmato (fornito da noi)</li>
                   <li>Eventuali certificazioni per allergie o necessità particolari</li>
                 </ul>
@@ -315,7 +293,6 @@ export default function InfoUtili() {
                 <p className="text-gray-700 leading-relaxed">
                   I nostri campi si svolgono in diverse sedi nel territorio comasco. 
                   Alcune attività si svolgono presso strutture sportive convenzionate. 
-                  I trasporti tra le sedi sono sempre organizzati da noi con pullman/pulmini privati.
                 </p>
               </div>
 

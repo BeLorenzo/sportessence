@@ -7,6 +7,14 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function CampiPage() {
+
+  const campImagesMap: Record<string, string> = {
+    "Cadorago Summer Camp": "/imgs/cadoragoLocandina.jpeg",
+    "Castello Città di Cantù Summer Camp": "/imgs/castelloLocandina.jpeg",
+    "Uggiate Summer Camp": "/imgs/uggiateLocandina.jpeg"
+  };
+
+
   const supabase = await createClient();
   
   // Verifica se l'utente è loggato
@@ -42,14 +50,15 @@ export default async function CampiPage() {
     const tiers = camp.camp_pricing_tiers?.sort((a: any, b: any) => a.min_weeks - b.min_weeks) || [];
     const baseTier = tiers.find((t: any) => t.min_weeks === 1) || tiers[0];
     const displayPrice = baseTier ? baseTier.price_per_week : 0;
-
+    const imagePath = campImagesMap[camp.nome] || "/imgs/sfondoRegistrazione.jpg";
     return {
       ...camp,
       computedData: {
         startDate,
         endDate,
         displayPrice,
-        weeksCount: sortedWeeks.length
+        weeksCount: sortedWeeks.length,
+        imagePath
       }
     };
   }).sort((a, b) => {
@@ -111,45 +120,48 @@ export default async function CampiPage() {
                 return (
                   <div 
                     key={camp.id} 
-                    /* LARGHEZZA DINAMICA: 100% su mobile, 50% su tablet, larghezza massima fissa (es. 420px) su schermi grandi per mantenerle belle cicciotte ma centrate */
+                    /* LARGHEZZA DINAMICA: 100% su mobile, 50% su tablet, 420px max su desktop */
                     className={`group bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-gray-100
                       hover:shadow-2xl hover:-translate-y-2 transition-all duration-300
                       flex flex-col w-full md:w-[calc(50%-1rem)] lg:w-[420px]
                       ${campoDisattivato && isLoggedIn ? 'grayscale opacity-90' : ''}`}
                   >
-                    {/* Header Image (Ripristinato h-64) */}
+                    {/* Header Image (PULITA DAL TESTO) */}
                     <div className="relative h-64 overflow-hidden">
                       <img
-                        src="/imgs/sfondoRegistrazione.jpg"
+                        src={camp.computedData.imagePath} 
                         alt={camp.nome}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        // Ho lasciato object-top e scale-105 come avevamo detto per migliorare l'inquadratura
+                        className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
                       />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${
-                        campoDisattivato && isLoggedIn
-                          ? 'from-gray-900/90 to-transparent' 
-                          : 'from-blue-900/90 via-blue-900/40 to-transparent'
-                      } flex flex-col justify-end p-8`}>
+                      
+                      {/* Oscura l'immagine solo se le iscrizioni sono chiuse */}
+                      {campoDisattivato && isLoggedIn && (
+                        <div className="absolute inset-0 bg-gray-900/50"></div>
+                      )}
                         
-                        {campoDisattivato && isLoggedIn && (
-                          <div className="absolute top-6 right-6">
-                            <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
-                              <XCircle size={16} /> Iscrizioni Chiuse
-                            </span>
-                          </div>
-                        )}
-                        
-                        <h3 className="text-3xl font-extrabold text-white mb-2 drop-shadow-md">
-                          {camp.nome}
-                        </h3>
-                        <div className="flex items-center gap-2 text-blue-100 font-medium text-sm">
-                          <MapPin size={18} className="text-cyan-400 shrink-0" />
-                          <span className="truncate">{camp.indirizzo_paese} ({camp.indirizzo_provincia})</span>
+                      {campoDisattivato && isLoggedIn && (
+                        <div className="absolute top-6 right-6">
+                          <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
+                            <XCircle size={16} /> Iscrizioni Chiuse
+                          </span>
                         </div>
-                      </div>
+                      )}
                     </div>
 
-                    {/* Body Card (Ripristinato p-8 originale) */}
+                    {/* Body Card */}
                     <div className="p-8 flex flex-col flex-grow relative">
+                      
+                      {/* TITOLO E INDIRIZZO (Spostati qui) */}
+                      <div className="mb-6">
+                        <h3 className="text-2xl md:text-3xl font-extrabold text-blue-deep mb-2 leading-tight">
+                          {camp.nome}
+                        </h3>
+                        <div className="flex items-start gap-2 text-gray-500 text-sm">
+                          <MapPin size={18} className="text-cyan-600 shrink-0 mt-0.5" />
+                          <span className="leading-snug">{indirizzoCompleto}</span>
+                        </div>
+                      </div>
                       
                       {/* Date e Durata */}
                       <div className="flex items-start gap-4 mb-6 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
@@ -166,22 +178,6 @@ export default async function CampiPage() {
                           </p>
                         </div>
                       </div>
-
-                      {/* Info Indirizzo */}
-                      <div className="mb-4 text-sm text-gray-500 flex gap-2 items-start">
-                         <MapPin size={16} className="mt-0.5 shrink-0"/>
-                         <span>{indirizzoCompleto}</span>
-                      </div>
-
-                      {/* Descrizione */}
-                      {camp.descrizione && (
-                        <div className="mb-6">
-                          <p className="text-gray-600 leading-relaxed line-clamp-3">
-                            {camp.descrizione}
-                          </p>
-                        </div>
-                      )}
-
                       <div className="flex-grow"></div>
 
                       {/* Prezzo */}

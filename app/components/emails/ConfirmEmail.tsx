@@ -34,6 +34,13 @@ export const ConfirmEmail: React.FC<EmailProps> = ({
       <p style={{ fontSize: '16px' }}>
         Abbiamo ricevuto correttamente la richiesta di iscrizione per <strong>{childName}</strong> al campo <strong>{campName}</strong>.
       </p>
+      <p style={{ fontSize: '16px', marginTop: '16px' }}>
+  Per garantire la conferma e la riserva del posto, è richiesto il versamento 
+  dell’acconto comprensivo della quota di tesseramento (15€). 
+  La invitiamo ad effettuare il pagamento il prima possibile, così da bloccare 
+  definitivamente l’iscrizione.
+</p>
+
       
       <div style={{ background: '#fffbeb', padding: '24px', borderRadius: '12px', border: '1px solid #fcd34d', margin: '30px 0' }}>
         <h3 style={{ marginTop: 0, color: '#92400e' }}>Dettagli per il Bonifico</h3>

@@ -105,32 +105,6 @@ export default function ProfileSection({ profile, onProfileUpdate, showAlert }: 
     }));
   };
 
-  // Verifica indirizzo con OpenStreetMap
-  const verificaIndirizzo = async (): Promise<boolean> => {
-    const { indirizzo_via, indirizzo_civico, indirizzo_paese, indirizzo_provincia } = formData;
-    const query = `${indirizzo_via} ${indirizzo_civico}, ${indirizzo_paese}, ${indirizzo_provincia}, Italia`;
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}`
-      );
-      const data = await res.json();
-
-      if (data.length > 0) {
-        const address = data[0].address;
-        // Se troviamo un CAP, aggiorniamo il form
-        if (address.postcode && address.postcode !== formData.indirizzo_cap) {
-          setFormData(prev => ({ ...prev, indirizzo_cap: address.postcode }));
-        }
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error("Errore verifica indirizzo:", err);
-      return false;
-    }
-  };
-
   const handleSaveProfile = async () => {
     // VALIDAZIONE COMPLETA PRIMA DEL SALVATAGGIO
     
@@ -186,15 +160,7 @@ export default function ProfileSection({ profile, onProfileUpdate, showAlert }: 
 
     setIsSubmitting(true);
 
-    // 7. Verifica indirizzo con OpenStreetMap
-    const indirizzoValido = await verificaIndirizzo();
-    if (!indirizzoValido) {
-      showAlert("Indirizzo non trovato su mappa. Controlla i dati inseriti.", "error");
-      setIsSubmitting(false);
-      return;
-    }
-
-    // 8. SALVA SU SUPABASE
+    // 7. SALVA SU SUPABASE
     try {
       const { error } = await supabase
         .from('profiles')
