@@ -118,8 +118,6 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
 export async function applyMembershipDiscount(enrollmentId: string) {
   const supabase = getAdminSupabase();
 
-  console.log(`Tentativo sconto ID: ${enrollmentId}`);
-
   const { data: enrollment, error: fetchError } = await supabase
     .from('enrollments')
     .select(`
@@ -162,8 +160,6 @@ export async function applyMembershipDiscount(enrollmentId: string) {
   const pagato = Number(enrollment.pagato || 0);
   const isSaldato = pagato >= newPrice;
   const newStatus = isSaldato ? 'saldato' : (enrollment.stato || 'acconto');
-
-  console.log(`Applicazione sconto ${discountPercent}%: -${discountAmount}€. Nuovo Totale: ${newPrice}`);
 
   // 5. Update
   const { error: updateError } = await supabase

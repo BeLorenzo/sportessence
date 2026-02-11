@@ -87,20 +87,175 @@ export default async function CampiPage() {
         </div>
       </section>
 
+      {/* --- LISTA CAMPI (Flexbox Centrato - Card Grandi originali) --- */}
+      <section className="pt-16 pb-10 px-6">
+        <div className="max-w-8xl mx-auto">
+          {!camps || camps.length === 0 ? (
+            <div className="bg-white rounded-[2rem] shadow-xl p-16 text-center border border-gray-100">
+              <div className="text-7xl mb-6">🏕️</div>
+              <h3 className="text-2xl font-bold text-blue-deep mb-2">
+                Nessun campo disponibile
+              </h3>
+              <p className="text-gray-500">
+                Torna presto per scoprire le nostre prossime avventure!
+              </p>
+            </div>
+          ) : (
+            /* FLEX CONTAINER: Avvolge le card e le centra sempre, indipendentemente dal numero */
+            <div className="flex flex-wrap justify-center gap-8 lg:gap-10">
+              {camps.map((camp) => {
+                const { startDate, endDate, displayPrice, weeksCount } = camp.computedData;
+                const campoDisattivato = !camp.attivo;
+                const indirizzoCompleto = `${camp.indirizzo_via} ${camp.indirizzo_civico}, ${camp.indirizzo_paese}`;
+                
+                return (
+                  <div 
+                    key={camp.id} 
+                    /* LARGHEZZA DINAMICA: 100% su mobile, 50% su tablet, larghezza massima fissa (es. 420px) su schermi grandi per mantenerle belle cicciotte ma centrate */
+                    className={`group bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-gray-100
+                      hover:shadow-2xl hover:-translate-y-2 transition-all duration-300
+                      flex flex-col w-full md:w-[calc(50%-1rem)] lg:w-[420px]
+                      ${campoDisattivato && isLoggedIn ? 'grayscale opacity-90' : ''}`}
+                  >
+                    {/* Header Image (Ripristinato h-64) */}
+                    <div className="relative h-64 overflow-hidden">
+                      <img
+                        src="/imgs/sfondoRegistrazione.jpg"
+                        alt={camp.nome}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      />
+                      <div className={`absolute inset-0 bg-gradient-to-t ${
+                        campoDisattivato && isLoggedIn
+                          ? 'from-gray-900/90 to-transparent' 
+                          : 'from-blue-900/90 via-blue-900/40 to-transparent'
+                      } flex flex-col justify-end p-8`}>
+                        
+                        {campoDisattivato && isLoggedIn && (
+                          <div className="absolute top-6 right-6">
+                            <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
+                              <XCircle size={16} /> Iscrizioni Chiuse
+                            </span>
+                          </div>
+                        )}
+                        
+                        <h3 className="text-3xl font-extrabold text-white mb-2 drop-shadow-md">
+                          {camp.nome}
+                        </h3>
+                        <div className="flex items-center gap-2 text-blue-100 font-medium text-sm">
+                          <MapPin size={18} className="text-cyan-400 shrink-0" />
+                          <span className="truncate">{camp.indirizzo_paese} ({camp.indirizzo_provincia})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Body Card (Ripristinato p-8 originale) */}
+                    <div className="p-8 flex flex-col flex-grow relative">
+                      
+                      {/* Date e Durata */}
+                      <div className="flex items-start gap-4 mb-6 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                        <div className="bg-white p-3 rounded-xl shadow-sm text-blue-600 shrink-0">
+                          <Calendar size={24} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
+                            {weeksCount} Settimane disponibili
+                          </p>
+                          <p className="text-gray-800 font-semibold text-lg leading-tight">
+                             Dal {formatDate(startDate || "")} <br/> 
+                             <span className="text-gray-400 text-sm font-normal">al</span> {formatDate(endDate || "")} {formatYear(endDate || "")}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Info Indirizzo */}
+                      <div className="mb-4 text-sm text-gray-500 flex gap-2 items-start">
+                         <MapPin size={16} className="mt-0.5 shrink-0"/>
+                         <span>{indirizzoCompleto}</span>
+                      </div>
+
+                      {/* Descrizione */}
+                      {camp.descrizione && (
+                        <div className="mb-6">
+                          <p className="text-gray-600 leading-relaxed line-clamp-3">
+                            {camp.descrizione}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex-grow"></div>
+
+                      {/* Prezzo */}
+                      <div className="flex items-end justify-between mb-8 border-t border-gray-100 pt-6">
+                        <div>
+                          <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Giornata Intera</p>
+                          <p className="text-[10px] text-gray-400">*prezzo per 1 settimana</p>
+                        </div>
+                        <div className="text-right">
+                           {displayPrice > 0 ? (
+                             <>
+                               <p className="text-xs text-gray-400 mb-0.5">a partire da</p>
+                               <p className="text-3xl font-extrabold text-blue-deep">€{displayPrice}</p>
+                             </>
+                           ) : (
+                             <p className="text-xl font-bold text-gray-400">Prezzi da definire</p>
+                           )}
+                        </div>
+                      </div>
+
+                      {/* Pulsanti Azione */}
+                      {!isLoggedIn ? (
+                        <div className="space-y-3">
+                          <p className="text-sm text-gray-500 text-center italic">
+                            Devi accedere per iscriverti
+                          </p>
+                          <Link
+                            href="/Login"
+                            className="flex items-center justify-center w-full bg-gray-800 text-white py-4 rounded-xl hover:bg-gray-900 hover:shadow-lg transition-all font-bold tracking-wide"
+                          >
+                            Accedi per Iscriverti
+                          </Link>
+                        </div>
+                      ) : campoDisattivato ? (
+                        <div className="space-y-3">
+                          <button disabled className="w-full bg-gray-100 text-gray-400 py-4 rounded-xl font-bold cursor-not-allowed border border-gray-200">
+                            Iscrizioni Chiuse
+                          </button>
+                          <a href="mailto:sportessence.asd.aps@gmail.com" className="block text-center text-sm text-cyan-600 hover:underline font-medium">
+                            Richiedi informazioni
+                          </a>
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/Iscrizione?campo=${camp.id}`}
+                          className="flex items-center justify-center gap-2 w-full bg-blue-deep text-white py-4 rounded-xl hover:bg-cyan-700 hover:shadow-lg hover:-translate-y-1 transition-all font-bold tracking-wide"
+                        >
+                          Iscriviti Ora <ArrowRight size={20} />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* --- DESCRIZIONE GENERALE (Statico - invariato) --- */}
-      <section className="py-20 px-6">
-        <div className="max-w-7xl mx-auto space-y-16">
+      <section className="py-20">
+        <div className="bg-blue-light rounded-[2.5rem] max-w-7xl mx-auto p-10 md:p-16 shadow-2xl">
           {/* Intro */}
-          <div className="text-center max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-blue-deep mb-6 uppercase tracking-wide">
+          <div className="text-center max-w-4xl mx-auto ">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 uppercase tracking-wide">
               Molto più di un campo estivo
             </h2>
-            <div className="h-1 w-24 bg-cyan-500 mx-auto rounded-full mb-8"></div>
-            <p className="text-gray-700 text-lg leading-relaxed">
+            <p className="text-white text-lg leading-relaxed">
               I nostri campi estivi sportivi sono pensati per offrire ai bambini e ai ragazzi
               un'esperienza completa fatta di movimento, gioco e socialità.
             </p>
           </div>
+        </div>
+          <div className="max-w-7xl mx-auto space-y-16  px-6">
 
           {/* Grid Dettagli */}
           <div className="grid md:grid-cols-2 gap-12 mt-17 items-stretch">
@@ -155,160 +310,7 @@ export default async function CampiPage() {
         </div>
       </section>
 
-      {/* --- LISTA CAMPI (Refactored Cards) --- */}
-      <section className="pb-20 px-6">
-        <div className="max-w-7xl mx-auto">
-          {!camps || camps.length === 0 ? (
-            <div className="bg-white rounded-[2rem] shadow-xl p-16 text-center border border-gray-100">
-              <div className="text-7xl mb-6">🏕️</div>
-              <h3 className="text-2xl font-bold text-blue-deep mb-2">
-                Nessun campo disponibile
-              </h3>
-              <p className="text-gray-500">
-                Torna presto per scoprire le nostre prossime avventure!
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:gap-10 gap-8">
-              {camps.map((camp) => {
-                const { startDate, endDate, displayPrice, weeksCount } = camp.computedData;
-                const campoDisattivato = !camp.attivo;
-                const indirizzoCompleto = `${camp.indirizzo_via} ${camp.indirizzo_civico}, ${camp.indirizzo_paese}`;
-                
-                return (
-                  <div 
-                    key={camp.id} 
-                    className={`group bg-white rounded-[2.5rem] shadow-xl overflow-hidden border border-gray-100
-                      hover:shadow-2xl hover:-translate-y-2 transition-all duration-300
-                      flex flex-col ${campoDisattivato && isLoggedIn ? 'grayscale opacity-90' : ''}`}
-                  >
-                    {/* Header Image */}
-                    <div className="relative h-64 overflow-hidden">
-                      <img
-                        src="/imgs/sfondoRegistrazione.jpg"
-                        alt={camp.nome}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      />
-                      <div className={`absolute inset-0 bg-gradient-to-t ${
-                        campoDisattivato && isLoggedIn
-                          ? 'from-gray-900/90 to-transparent' 
-                          : 'from-blue-900/90 via-blue-900/40 to-transparent'
-                      } flex flex-col justify-end p-8`}>
-                        
-                        {/* Badge Status */}
-                        {campoDisattivato && isLoggedIn && (
-                          <div className="absolute top-6 right-6">
-                            <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
-                              <XCircle size={16} /> Iscrizioni Chiuse
-                            </span>
-                          </div>
-                        )}
-                        
-                        <h3 className="text-3xl font-extrabold text-white mb-2 drop-shadow-md">
-                          {camp.nome}
-                        </h3>
-                        <div className="flex items-center gap-2 text-blue-100 font-medium text-sm">
-                          <MapPin size={18} className="text-cyan-400 shrink-0" />
-                          <span className="truncate">{camp.indirizzo_paese} ({camp.indirizzo_provincia})</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Body Card */}
-                    <div className="p-8 flex flex-col flex-grow relative">
-                      
-                      {/* Date e Durata */}
-                      <div className="flex items-start gap-4 mb-6 bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
-                        <div className="bg-white p-3 rounded-xl shadow-sm text-blue-600 shrink-0">
-                          <Calendar size={24} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">
-                            {weeksCount} Settimane disponibili
-                          </p>
-                          <p className="text-gray-800 font-semibold text-lg leading-tight">
-                             Dal {formatDate(startDate || "")} <br/> 
-                             <span className="text-gray-400 text-sm font-normal">al</span> {formatDate(endDate || "")} {formatYear(endDate || "")}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Info Indirizzo */}
-                      <div className="mb-4 text-sm text-gray-500 flex gap-2 items-start">
-                         <MapPin size={16} className="mt-0.5 shrink-0"/>
-                         <span>{indirizzoCompleto}</span>
-                      </div>
-
-                      {/* Descrizione */}
-                      {camp.descrizione && (
-                        <div className="mb-6">
-                          <p className="text-gray-600 leading-relaxed line-clamp-3">
-                            {camp.descrizione}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Spacer */}
-                      <div className="flex-grow"></div>
-
-                      {/* Prezzo */}
-                      <div className="flex items-end justify-between mb-8 border-t border-gray-100 pt-6">
-                        <div>
-                          <p className="text-xs text-gray-500 uppercase font-bold tracking-wide">Giornata Intera</p>
-                          <p className="text-[10px] text-gray-400">*prezzo per 1 settimana</p>
-                        </div>
-                        <div className="text-right">
-                           {displayPrice > 0 ? (
-                             <>
-                               <p className="text-xs text-gray-400 mb-0.5">a partire da</p>
-                               <p className="text-3xl font-extrabold text-blue-deep">€{displayPrice}</p>
-                             </>
-                           ) : (
-                             <p className="text-xl font-bold text-gray-400">Prezzi da definire</p>
-                           )}
-                        </div>
-                      </div>
-
-                      {/* Pulsanti Azione */}
-                      {!isLoggedIn ? (
-                        <div className="space-y-3">
-                          <p className="text-sm text-gray-500 text-center italic">
-                            Devi accedere per iscriverti
-                          </p>
-                          <Link
-                            href="/Login"
-                            className="flex items-center justify-center w-full bg-gray-800 text-white py-4 rounded-xl 
-                              hover:bg-gray-900 hover:shadow-lg transition-all font-bold tracking-wide"
-                          >
-                            Accedi per Iscriverti
-                          </Link>
-                        </div>
-                      ) : campoDisattivato ? (
-                        <div className="space-y-3">
-                          <button disabled className="w-full bg-gray-100 text-gray-400 py-4 rounded-xl font-bold cursor-not-allowed border border-gray-200">
-                            Iscrizioni Chiuse
-                          </button>
-                          <a href="mailto:sportessence.asd.aps@gmail.com" className="block text-center text-sm text-cyan-600 hover:underline font-medium">
-                            Richiedi informazioni
-                          </a>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/Iscrizione?campo=${camp.id}`}
-                          className="flex items-center justify-center gap-2 w-full bg-blue-deep text-white py-4 rounded-xl 
-                            hover:bg-cyan-700 hover:shadow-lg hover:-translate-y-1 transition-all font-bold tracking-wide"
-                        >
-                          Iscriviti Ora <ArrowRight size={20} />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+      
 
       {/* --- CALL TO ACTION (Non Loggato) --- */}
       {!isLoggedIn && camps && camps.length > 0 && (

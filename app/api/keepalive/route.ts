@@ -24,8 +24,6 @@ export async function GET(request: Request) {
       console.error('❌ Keepalive error:', error.message)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
-
-    console.log('✅ Database keepalive successful. Rows:', count)
     
     return NextResponse.json({ 
       success: true, 

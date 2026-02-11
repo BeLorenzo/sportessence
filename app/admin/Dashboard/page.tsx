@@ -20,10 +20,7 @@ export default async function AdminDashboardPage() {
 
   if (!adminCheck) redirect('/');
 
-  // 2. Fetch dei dati
-  console.log("--- ADMIN FETCH START ---");
-
-  // A. Campi (Verifica che 'membership_type' esista nel DB!)
+   // A. Campi (Verifica che 'membership_type' esista nel DB!)
   const { data: camps, error: campError } = await supabase
     .from('camps')
     .select('id, nome, membership_type') 
@@ -60,8 +57,6 @@ export default async function AdminDashboardPage() {
     .order('created_at', { ascending: false });
 
   if (enrollError) console.error("Errore Iscrizioni:", enrollError);
-
-  console.log(`Trovati: ${enrollments?.length || 0} iscrizioni, ${camps?.length || 0} campi`);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6 md:p-10">

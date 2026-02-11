@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, Children } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Users, CreditCard, Calendar, Search, 
@@ -48,13 +48,24 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
   const enrichedEnrollments = useMemo(() => {
     if (!enrollments) return [];
     return enrollments.map(enrollment => {
-      const parentId = enrollment.children?.parent_id;
-      const parentProfile = profiles?.find(p => p.id === parentId);
-      
       const child = enrollment.children;
+      const parentId = child?.parent_id;
+      const parentProfile = profiles?.find(p => p.id === parentId);
+
       const hasMedicalIssues = Array.isArray(child?.intolleranze) && child.intolleranze.length > 0;
 
-      return { ...enrollment, parent: parentProfile, hasMedicalIssues };
+      let age = null;
+      if (child?.data_nascita) {
+        const birthDate = new Date(child.data_nascita);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+      }
+
+      return { ...enrollment, parent: parentProfile, hasMedicalIssues, age };
     });
   }, [enrollments, profiles]);
 
@@ -492,7 +503,7 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Codice Fiscale</span>
-                  <span className="text-sm font-mono font-medium text-gray-900">{child.codice_fiscale || "Non specificato"}</span>
+                  <span className="text-sm font-mono font-medium text-gray-900">{child.cf || "Non specificato"}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Data di Nascita</span>
@@ -1013,7 +1024,9 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
                                 <td className="p-4 align-top">
                                     <button onClick={() => openChildModal(enrollment)} className="flex items-center gap-2 text-left group">
                                       <Baby size={16} className="text-blue-500 group-hover:text-blue-700" />
-                                      <span className="font-bold text-blue-900 text-base group-hover:underline">{enrollment.children?.nome} {enrollment.children?.cognome}</span>
+                                      <span className="font-bold text-blue-900 text-base group-hover:underline">
+                                      {enrollment.children?.nome} {enrollment.children?.cognome} - {enrollment.age !== null ? `${enrollment.age} anni` : 'Età N/D'}
+                                      </span>
                                       {enrollment.hasMedicalIssues && (
                                         <AlertTriangle size={16} className="text-amber-500" />
                                       )}

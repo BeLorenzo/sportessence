@@ -3,49 +3,39 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
-  
-  // Risposta base
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  // 1. INIZIALIZZA SUPABASE
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => 
-            request.cookies.set(name, value)
-          )
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
+      getAll() {
+        return request.cookies.getAll()
       },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const oneWeek = 60 * 60 * 24 * 7;
+          const newOptions = { 
+            ...options, 
+            maxAge: oneWeek,
+            expires: new Date(Date.now() + oneWeek * 1000) 
+          };
+          request.cookies.set(name, value);
+          supabaseResponse.cookies.set(name, value, newOptions);
+        });
+      },
+    },
     }
   )
 
   // 2. CHECK ADMIN (Necessario per farti passare)
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  let isAdmin = false
-  if (user && !authError) {
-    const { data: adminRow } = await supabase
-      .from('admins_whitelist')
-      .select('id')
-      .eq('id', user.id)
-      .single()
-    if (adminRow) isAdmin = true
-  }
-
+  const isAdmin = user?.app_metadata?.role == 'admin'
+  
   // ============================================================
   // 🚧 BLOCCO MANUTENZIONE TOTALE
   // ============================================================
@@ -70,8 +60,6 @@ export async function middleware(request: NextRequest) {
         return NextResponse.rewrite(new URL('/manutenzione', request.url))
       }
     } else {
-        // Log opzionale per vedere che stai passando come Admin
-        // console.log(`🔓 Admin ${user.email} bypassa la manutenzione`)
     }
   }
   // ============================================================

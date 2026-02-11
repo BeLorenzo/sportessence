@@ -7,11 +7,10 @@ import Link from "next/link";
 const teamMembers = [
   {
     name: "Filippo Carrante",
-    role: "Fondatore e Responsabile Organizzativo",
+    role: "Responsabile Organizzativo",
     image: "/imgs/team/filippo.png",
     bio: "Laureato in Scienze Motorie con oltre 10 anni di esperienza nel settore educativo, Filippo ha fondato questa realtà con un obiettivo preciso: trasmettere ai ragazzi i valori dello sport sano. È il motore pulsante dell'organizzazione, colui che trasforma le idee in esperienze indimenticabili per ogni partecipante.",
     quote: "Non organizziamo solo un camp, creiamo ricordi che accompagneranno i ragazzi per tutta la vita.",
-    tags: ["Scienze Motorie", "Leadership", "Organizzazione"],
     color: "cyan"
   },
   {
@@ -20,16 +19,14 @@ const teamMembers = [
     image: "/imgs/team/giacomoCavallini.png",
     bio: "Responsabile della stabilità e della crescita del progetto, Giacomo unisce competenze manageriali a una grande passione per il mondo giovanile. Il suo lavoro dietro le quinte garantisce che tutto funzioni alla perfezione, permettendo allo staff educativo di concentrarsi al 100% sui ragazzi.",
     quote: "L'efficienza organizzativa è la base su cui costruiamo il divertimento in sicurezza.",
-    tags: ["Management", "Strategia", "Amministrazione"],
     color: "blue"
   },
   {
     name: "Stefano Frigerio",
     role: "Socio, Fisioterapista e Osteopata",
-    image: "/imgs/team/stefanoFrigerio.png",
-    bio: "Fisioterapista e Osteopata specializzato in Psiconeurodinamica, Stefano porta nel team un'expertise medica di altissimo livello. Collabora con realtà d'eccellenza come PGC Cantù, Golf Club Villa D’Este e Briantea84. La sua presenza garantisce un'attenzione professionale alla salute fisica e al benessere motorio di ogni ragazzo.",
+    image: "/imgs/team/stefanoFrigerio.jpeg",
+    bio: "Fisioterapista e Osteopata specializzato in Psiconeurodinamica, Stefano porta nel team un'expertise medica di altissimo livello. Collabora con realtà d'eccellenza come PGC Cantù, Green Golf Academy e Briantea84. La sua presenza garantisce un'attenzione professionale alla salute fisica e al benessere motorio di ogni ragazzo.",
     quote: "Aiutare le persone a migliorare il proprio stato di salute mi dà grande soddisfazione. Credo che il gioco e il movimento siano strumenti efficaci per insegnare ai bambini l’importanza di prendersi cura del proprio corpo.",
-    tags: ["Fisioterapia", "Osteopatia", "Salute & Benessere"],
     color: "emerald"
   },
   {
@@ -38,7 +35,6 @@ const teamMembers = [
     image: "/imgs/team/marcoTambini.png",
     bio: "Pilastro della gestione societaria, Marco supervisiona gli aspetti logistici e burocratici con precisione assoluta. La sua esperienza assicura che ogni aspetto del camp rispetti i più alti standard di qualità e normativa, offrendo alle famiglie la massima tranquillità.",
     quote: "La serietà di una struttura si vede dai dettagli che nessuno nota, ma che fanno funzionare tutto.",
-    tags: ["Logistica", "Pianificazione", "Back-office"],
     color: "indigo"
   },
   {
@@ -47,7 +43,6 @@ const teamMembers = [
     image: "/imgs/team/StefanoCaldrer.jpeg",
     bio: "Il punto di riferimento per le famiglie. Stefano gestisce la segreteria e le relazioni esterne con pazienza e disponibilità. È la voce amica che accoglie i genitori e risolve ogni dubbio, assicurando una comunicazione limpida e puntuale tra l'organizzazione e le famiglie.",
     quote: "L'accoglienza inizia dal primo sorriso e dalla prima risposta chiara che diamo a un genitore.",
-    tags: ["Segreteria", "Relazioni Esterne", "Accoglienza"],
     color: "orange"
   },
   {
@@ -56,7 +51,6 @@ const teamMembers = [
     image: "/imgs/team/FulvioRonconi.jpeg",
     bio: "Un vulcano di energia sul campo. Fulvio coordina le squadre degli animatori assicurandosi che il ritmo delle giornate sia sempre alto e coinvolgente. Esperto nella gestione dei gruppi, sa cogliere le dinamiche tra i ragazzi per favorire l'integrazione e il divertimento di tutti.",
     quote: "Un gruppo unito è la forza più grande. Qui nessuno rimane in panchina.",
-    tags: ["Coordinamento", "Team Building", "Animazione"],
     color: "violet"
   },
   {
@@ -65,7 +59,6 @@ const teamMembers = [
     image: "/imgs/team/eduardoRomeo.png",
     bio: "Con una profonda esperienza nell'educazione non formale, Eduardo progetta e supervisiona le attività quotidiane. Il suo focus è sull'equilibrio tra sicurezza e avventura, garantendo che ogni gioco abbia anche un valore educativo oltre che ludico.",
     quote: "Educare significa tirare fuori il meglio da ogni ragazzo, spesso semplicemente facendolo giocare.",
-    tags: ["Programmazione", "Sicurezza", "Educazione"],
     color: "rose"
   },
   {
@@ -73,9 +66,8 @@ const teamMembers = [
     role: "Mascotte Ufficiale",
     image: "/imgs/mascotte.png", // Usa l'immagine della mascotte
     bio: "Ciao! Sono FIRO, una volpe curiosa e super energica che adora fare nuove amicizie! Ogni anno accompagno i bambini nelle loro avventure al campo, insegnando loro l'importanza del gioco di squadra, del rispetto e del divertimento.",
-    quote: "La mia missione? Far sorridere TUTTI! Al campo estivo non ci sono estranei, solo amici che non si sono ancora conosciuti! 😄",
-    tags: ["Allegria Garantita", "Amico di Tutti", "100% Energia"],
-    color: "fox" // Colore custom definito sotto
+    quote: "La mia missione? Far sorridere TUTTI! Al campo estivo non ci sono estranei, solo amici che non hai ancora conosciuto! 😄",
+    color: "fox" 
   }
 ];
 
@@ -236,15 +228,7 @@ export default function About() {
                               "{member.quote}"
                               </em>
                           </p>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 mt-6">
-                        {member.tags.map(tag => (
-                            <span key={tag} className={`bg-white ${theme.text} border ${theme.border} px-3 py-1 rounded-lg text-xs font-bold shadow-sm opacity-80`}>
-                                #{tag}
-                            </span>
-                        ))}
-                      </div>
+                      </div> 
                     </div>
 
                   </div>
