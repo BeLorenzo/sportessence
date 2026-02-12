@@ -1,6 +1,7 @@
 import { createClient } from "@/app/utils/supabase/server";
 import Link from "next/link";
 import { Calendar, MapPin, Users, Mail, XCircle, Clock, CheckCircle2, ArrowRight, Phone } from "lucide-react";
+import CampImageGallery from "../components/CampImageGallery";
 
 // Disabilita cache per avere dati sempre freschi
 export const dynamic = 'force-dynamic';
@@ -9,11 +10,25 @@ export const revalidate = 0;
 export default async function CampiPage() {
 
   const campImagesMap: Record<string, string> = {
-    "Cadorago Summer Camp": "/imgs/cadoragoLocandina.jpeg",
-    "Castello Città di Cantù Summer Camp": "/imgs/castelloLocandina.jpeg",
-    "Uggiate Summer Camp": "/imgs/uggiateLocandina.jpeg"
+    "Cadorago Summer Camp": "/imgs/locandine/Cadorago/cadoragoLocandina1.jpeg",
+    "Castello Città di Cantù Summer Camp": "/imgs/locandine/Cantu/castelloLocandina1.jpeg",
+    "Uggiate Summer Camp": "/imgs/locandine/Uggiate/uggiateLocandina1.jpeg"
   };
 
+  const campGalleriesMap: Record<string, string[]> = {
+    "Cadorago Summer Camp": [
+        "/imgs/locandine/Cadorago/cadoragoLocandina1.jpeg", 
+        "/imgs/locandine/Cadorago/cadoragoLocandina2.jpeg",    
+        "/imgs/locandine/Cadorago/cadoragoLocandina3.jpeg",     
+        "/imgs/locandine/Cadorago/cadoragoLocandina4.jpeg"      
+    ],
+    "Castello Città di Cantù Summer Camp": [
+        "/imgs/locandine/Cantu/castelloLocandina1.jpeg",
+    ],
+    "Uggiate Summer Camp": [
+        "/imgs/locandine/Uggiate/uggiateLocandina1.jpeg",
+    ]
+  };
 
   const supabase = await createClient();
   
@@ -113,10 +128,11 @@ export default async function CampiPage() {
             /* FLEX CONTAINER: Avvolge le card e le centra sempre, indipendentemente dal numero */
             <div className="flex flex-wrap justify-center gap-8 lg:gap-10">
               {camps.map((camp) => {
-                const { startDate, endDate, displayPrice, weeksCount } = camp.computedData;
+                const { startDate, endDate, displayPrice, weeksCount, imagePath } = camp.computedData;
                 const campoDisattivato = !camp.attivo;
                 const indirizzoCompleto = `${camp.indirizzo_via} ${camp.indirizzo_civico}, ${camp.indirizzo_paese}`;
                 
+                const galleryImages = campGalleriesMap[camp.nome] || [];
                 return (
                   <div 
                     key={camp.id} 
@@ -127,26 +143,23 @@ export default async function CampiPage() {
                       ${campoDisattivato && isLoggedIn ? 'grayscale opacity-90' : ''}`}
                   >
                     {/* Header Image (PULITA DAL TESTO) */}
-                    <div className="relative h-64 overflow-hidden">
-                      <img
-                        src={camp.computedData.imagePath} 
-                        alt={camp.nome}
-                        // Ho lasciato object-top e scale-105 come avevamo detto per migliorare l'inquadratura
-                        className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-                      />
-                      
-                      {/* Oscura l'immagine solo se le iscrizioni sono chiuse */}
-                      {campoDisattivato && isLoggedIn && (
-                        <div className="absolute inset-0 bg-gray-900/50"></div>
-                      )}
-                        
-                      {campoDisattivato && isLoggedIn && (
-                        <div className="absolute top-6 right-6">
-                          <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
-                            <XCircle size={16} /> Iscrizioni Chiuse
-                          </span>
-                        </div>
-                      )}
+                    <div className="relative">
+                        <CampImageGallery 
+                            campName={camp.nome}
+                            thumbnailSrc={imagePath}
+                            galleryImages={galleryImages}
+                        />
+
+                        {/* Overlay "Iscrizioni Chiuse" (lo mettiamo sopra la gallery in absolute) */}
+                        {campoDisattivato && isLoggedIn && (
+                            <div className="absolute inset-0 bg-gray-900/10 pointer-events-none z-10">
+                                <div className="absolute top-6 right-6">
+                                <span className="bg-red-500/90 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 shadow-lg uppercase tracking-wide">
+                                    <XCircle size={16} /> Iscrizioni Chiuse
+                                </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Body Card */}

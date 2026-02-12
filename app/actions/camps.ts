@@ -3,18 +3,20 @@
 import { createClient } from '../utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-// Nuovi tipi allineati al DB
+// --- TIPI ---
+
 export type CampWeekData = {
-  id?: string // Opzionale se nuova
+  id?: string 
   label: string
   data_inizio: string
   data_fine: string
 }
 
 export type PricingTierData = {
-  id?: string // Opzionale se nuovo
+  id?: string 
   min_weeks: number
   price_per_week: number
+  discount_percent: number
 }
 
 export type CampData = {
@@ -27,7 +29,6 @@ export type CampData = {
   descrizione?: string
   attivo: boolean
   
-  // Aggiungi queste due righe per risolvere l'errore del Form
   data_inizio?: string 
   data_fine?: string
 
@@ -36,20 +37,20 @@ export type CampData = {
   price_pre: number
   price_post: number
   price_pre_post_bundle: number
-  membership_fee: number
-  membership_discount_percent: number
-  membership_type: 'NONE' | 'MANDATORY' | 'OPTIONAL'
+  
+  // Nuova gestione sconti fratelli
+  sibling_discount_value: number      // Sconto (Percentuale o Assoluto)
+  sibling_discount_week_price: number // Prezzo Fisso Settimanale (NUOVO)
 
   // Relazioni
   weeks: CampWeekData[]
   tiers: PricingTierData[]
 }
 
-// --- GET TUTTI I CAMPI (CON RELAZIONI) ---
+// --- GET TUTTI I CAMPI ---
 export async function getAllCamps() {
   const supabase = await createClient()
   
-  // Fetch con le relazioni per calcolare date min/max e prezzi visuali
   const { data, error } = await supabase
     .from('camps')
     .select(`
@@ -57,14 +58,13 @@ export async function getAllCamps() {
       camp_weeks (*),
       camp_pricing_tiers (*)
     `)
-    .order('created_at', { ascending: false }) // Ordine creazione, poi ordineremo per data weeks
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error('Errore recupero campi:', error)
     return { error: error.message }
   }
 
-  // Ordiniamo lato client/server in base alla prima settimana disponibile
   const sortedCamps = data?.sort((a, b) => {
     const dateA = a.camp_weeks?.[0]?.data_inizio || '9999-12-31';
     const dateB = b.camp_weeks?.[0]?.data_inizio || '9999-12-31';
@@ -74,11 +74,7 @@ export async function getAllCamps() {
   return { success: true, camps: sortedCamps }
 }
 
-// --- CREA / AGGIORNA CAMPO COMPLESSO ---
-// Nota: Per semplicità in questa fase, gestiamo creazione e update con logica simile
-// L'update è complesso perché bisogna gestire diff di settimane/tiers. 
-// Qui facciamo un approccio "Upsert" semplificato per le relazioni.
-
+// --- CREA / AGGIORNA CAMPO ---
 export async function upsertCampFull(campData: CampData, campId?: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -86,6 +82,7 @@ export async function upsertCampFull(campData: CampData, campId?: string) {
   if (!user) return { error: 'Non autenticato' }
 
   // 1. Prepara dati tabella Master (Camps)
+  // Qui mancava il mapping di sibling_discount_week_price
   const masterData = {
     nome: campData.nome,
     indirizzo_via: campData.indirizzo_via,
@@ -99,10 +96,11 @@ export async function upsertCampFull(campData: CampData, campId?: string) {
     price_pre: campData.price_pre,
     price_post: campData.price_post,
     price_pre_post_bundle: campData.price_pre_post_bundle,
-    membership_fee: campData.membership_fee,
-    membership_discount_percent: campData.membership_discount_percent,
-    membership_type: campData.membership_type,
-    // Per compatibilità query vecchie, calcoliamo data inizio/fine globali
+    
+    // MAPPING CORRETTO DEI NUOVI CAMPI
+    sibling_discount_value: campData.sibling_discount_value,
+    sibling_discount_week_price: campData.sibling_discount_week_price,
+
     data_inizio: campData.weeks.length > 0 ? campData.weeks.sort((a,b) => a.data_inizio.localeCompare(b.data_inizio))[0].data_inizio : null,
     data_fine: campData.weeks.length > 0 ? campData.weeks.sort((a,b) => b.data_fine.localeCompare(a.data_fine))[0].data_fine : null,
   }
@@ -122,10 +120,9 @@ export async function upsertCampFull(campData: CampData, campId?: string) {
   if (!currentCampId) return { error: "ID Campo mancante" };
 
   // 3. Gestione Settimane (Camp Weeks)
-  // Strategia semplice: Cancelliamo le settimane non presenti nell'array inviato e upsertiamo le altre
-  // (In produzione servirebbe logica più raffinata per non rompere FK su iscrizioni esistenti, ma usiamo ON DELETE RESTRICT nel DB per sicurezza)
-  
-  // A. Upsert Settimane
+  const payloadIds = campData.weeks.map(w => w.id).filter(Boolean);
+
+  // A. Upsert
   for (const w of campData.weeks) {
     const weekPayload = {
       camp_id: currentCampId,
@@ -141,24 +138,26 @@ export async function upsertCampFull(campData: CampData, campId?: string) {
     }
   }
   
-  // B. Eliminazione settimane rimosse dalla UI (quelle nel DB che non sono nel payload)
-  if (campData.weeks.length > 0) {
-    const payloadIds = campData.weeks.map(w => w.id).filter(Boolean);
-    if (payloadIds.length > 0) {
-        // Elimina quelle che non sono nella lista degli ID inviati
-        await supabase.from('camp_weeks').delete().eq('camp_id', currentCampId).not('id', 'in', `(${payloadIds.join(',')})`);
-    }
+  // B. Delete obsolete
+  if (campData.weeks.length > 0 && payloadIds.length > 0) {
+      // Elimina quelle che non sono nella lista degli ID inviati
+      // (Nota: se l'array è vuoto non entra qui, se vuoi cancellare tutto in caso di array vuoto serve logica extra, 
+      // ma di solito un campo ha sempre settimane)
+      await supabase.from('camp_weeks').delete().eq('camp_id', currentCampId).not('id', 'in', `(${payloadIds.join(',')})`);
+  } else if (campData.weeks.length === 0) {
+      // Se l'array inviato è vuoto, cancella tutto (se non ci sono vincoli FK)
+      await supabase.from('camp_weeks').delete().eq('camp_id', currentCampId);
   }
 
   // 4. Gestione Tiers (Listini)
-  // Stessa logica: Upsert + Delete missing
-  await supabase.from('camp_pricing_tiers').delete().eq('camp_id', currentCampId); // Tiers sono leggeri, possiamo ricrearli per pulizia
+  await supabase.from('camp_pricing_tiers').delete().eq('camp_id', currentCampId);
   
   if (campData.tiers.length > 0) {
     const tiersPayload = campData.tiers.map(t => ({
         camp_id: currentCampId,
         min_weeks: t.min_weeks,
-        price_per_week: t.price_per_week
+        price_per_week: t.price_per_week,
+        discount_percent: t.discount_percent || 0
     }));
     const { error: errTiers } = await supabase.from('camp_pricing_tiers').insert(tiersPayload);
     if (errTiers) return { error: `Errore tiers: ${errTiers.message}` };
@@ -171,8 +170,13 @@ export async function upsertCampFull(campData: CampData, campId?: string) {
 
 export async function deleteCamp(id: string) {
     const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return { error: 'Non autenticato' }
+    
     const { error } = await supabase.from('camps').delete().eq('id', id);
     if (error) return { error: error.message }
+    
     revalidatePath('/Campi');
     revalidatePath('/admin/Campi');
     return { success: true }

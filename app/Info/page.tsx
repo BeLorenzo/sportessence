@@ -65,6 +65,7 @@ export default function InfoUtili() {
                   Il pranzo è preparato da una mensa convenzionata 
                   con menù bilanciati e approvati da nutrizionisti. Sono disponibili 
                   menù per esigenze alimentari speciali (celiachia, allergie, vegetariani).
+                  Il costo per l'accesso al pranzo è di 5€ da pagare giornalmente in loco.
                   Le merende di metà mattina e pomeriggio sono fornite dall'organizzazione.
                 </p>
               </div>

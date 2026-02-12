@@ -6,7 +6,6 @@ import { Resend } from 'resend'
 import { ConfirmEmail } from '../components/emails/ConfirmEmail'
 import { BANK_INFO } from '../utils/bankInfo'
 
-// Inizializza Resend con la chiave API (assicurati che sia nel .env.local)
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export type EnrollmentPayload = {
@@ -20,6 +19,7 @@ export type EnrollmentPayload = {
   }[]
   totalPrice: number
   priceSnapshot: any
+  appliedPromo?: boolean 
 }
 
 export async function createEnrollment(payload: EnrollmentPayload) {
@@ -28,15 +28,12 @@ export async function createEnrollment(payload: EnrollmentPayload) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non autenticato' }
 
-  // 1. Validazione Input Base
   if (!payload.weeks || payload.weeks.length === 0) {
     return { error: 'Seleziona almeno una settimana' }
   }
 
-  // --- 🛡️ GUARD CHECK: VERIFICA DUPLICATI ---
-  // Prima di creare qualsiasi cosa, controlliamo se il bambino ha già una di queste settimane.
+  // --- 1. VERIFICA DUPLICATI ---
   const weekIdsToCheck = payload.weeks.map(w => w.camp_week_id);
-  
   const { data: existingDuplicates, error: checkError } = await supabase
     .from('enrollment_weeks')
     .select('camp_week_id')
@@ -44,104 +41,129 @@ export async function createEnrollment(payload: EnrollmentPayload) {
     .in('camp_week_id', weekIdsToCheck);
 
   if (checkError) {
-    console.error("Errore controllo duplicati:", checkError);
-    return { error: "Errore tecnico durante la verifica delle settimane." };
+      console.error("Errore check duplicati:", checkError);
+      return { error: "Errore verifica disponibilità." };
   }
 
   if (existingDuplicates && existingDuplicates.length > 0) {
-    // ABORTIAMO: C'è un tentativo di doppia prenotazione
-    return { 
-      error: `Attenzione: ${existingDuplicates.length} settimane selezionate risultano già prenotate per questo bambino. Ricarica la pagina.` 
-    };
+    return { error: `Attenzione: ${existingDuplicates.length} settimane risultano già prenotate.` };
   }
-  // ------------------------------------------
 
-  // 2. Creazione Record Master (Enrollment)
+  // --- 2. CALCOLO PREZZO "SOURCE OF TRUTH" ---
+  const rpcPayload = payload.weeks.map(w => ({
+    camp_week_id: w.camp_week_id,
+    type: w.type,
+    pre_post: w.pre_post
+  }));
+
+  // Chiamata alla nuova funzione SQL che calcola il totale COMBINATO (Old + New) e ritorna il delta
+  const { data: dbQuote, error: rpcError } = await supabase.rpc('calculate_enrollment_price', {
+    p_camp_id: payload.campId,
+    p_child_id: payload.childId,
+    p_new_weeks: rpcPayload
+  });
+
+  if (rpcError || !dbQuote) {
+    console.error("Errore RPC:", rpcError);
+    return { error: "Errore nel calcolo del prezzo server." };
+  }
+
+  // B. Gestione Sconto Codice (ENV) - applicato al totale CUMULATIVO
+  let calculatedPromoDiscount = 0;
+  
+  if (payload.appliedPromo) {
+    const promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI || "0.20");
+    // Lo sconto codice si applica sulla 'tuition' totale (Old + New)
+    calculatedPromoDiscount = Number(dbQuote.tuition) * promoPercent;
+  }
+
+  // C. Costruzione Totale Server
+  // Totale Cumulativo (Old + New) al netto degli sconti (fratelli e promo)
+  const dbGrandTotal = Number(dbQuote.grand_total_value); // Include sconto fratelli
+  const serverGrandTotal = Math.max(0, dbGrandTotal - calculatedPromoDiscount);
+  
+  // Sottraiamo ciò che è già stato fatturato (che includeva eventuali sconti precedenti)
+  const alreadyBilled = Number(dbQuote.already_billed);
+  const serverDeltaToPay = Math.max(0, serverGrandTotal - alreadyBilled);
+
+  // D. Check di sicurezza
+  if (Math.abs(serverDeltaToPay - payload.totalPrice) > 1.5) {
+    console.warn(`Mismatch Prezzo: Frontend €${payload.totalPrice} vs Server €${serverDeltaToPay}`);
+  }
+
+  // --- 3. INSERIMENTO DB ---
   const { data: enrollment, error: errEnrollment } = await supabase
     .from('enrollments')
     .insert({
       camp_id: payload.campId,
       child_id: payload.childId,
-      stato: 'CONFIRMED', // Nasce confermata come richiesto
-      prezzo_totale: payload.totalPrice,
+      stato: 'CONFIRMED',
+      prezzo_totale: serverDeltaToPay, // Salviamo il DELTA
       pagato: 0,
-      price_snapshot: payload.priceSnapshot,
+      price_snapshot: {
+        ...payload.priceSnapshot,
+        server_calculation: dbQuote,
+        promo_applied: payload.appliedPromo,
+        promo_value: calculatedPromoDiscount,
+        final_verified_delta: serverDeltaToPay
+      }, 
     })
     .select('id')
     .single()
 
-  if (errEnrollment) {
-    console.error("Errore creazione enrollment:", errEnrollment)
-    return { error: 'Errore durante la creazione dell\'iscrizione' }
-  }
+  if (errEnrollment) return { error: 'Errore creazione iscrizione' };
 
-  // 3. Creazione Dettagli (Enrollment Weeks)
-  const weeksData = payload.weeks.map(w => ({
-    enrollment_id: enrollment.id,
-    camp_week_id: w.camp_week_id,
-    child_id: payload.childId,
-    type: w.type,
-    pre_post: w.pre_post,
-    computed_price: w.price
-  }))
+  // --- 4. INSERIMENTO DETTAGLI SETTIMANE ---
+  const weeksData = payload.weeks.map(w => {
+    // Il dettaglio prezzo singolo è tricky col delta.
+    // Salviamo il prezzo "di listino" calcolato per quella settimana nel contesto attuale.
+    const serverDetail = dbQuote.details.find((d: any) => d.week_id === w.camp_week_id);
+    const basePrice = serverDetail ? Number(serverDetail.price) : w.price;
+    const extraPrice = serverDetail ? Number(serverDetail.extraPrice) : 0; 
 
-  const { error: errWeeks } = await supabase
-    .from('enrollment_weeks')
-    .insert(weeksData)
+    return {
+      enrollment_id: enrollment.id,
+      camp_week_id: w.camp_week_id,
+      child_id: payload.childId,
+      type: w.type,
+      pre_post: w.pre_post,
+      computed_price: basePrice + extraPrice
+    };
+  });
+
+  const { error: errWeeks } = await supabase.from('enrollment_weeks').insert(weeksData);
 
   if (errWeeks) {
-    console.error("Errore inserimento settimane:", errWeeks)
-    
-    // ROLLBACK MANUALE: Se fallisce l'inserimento delle settimane, cancelliamo l'ordine "padre".
-    await supabase.from('enrollments').delete().eq('id', enrollment.id)
-    
-    // Gestione specifica errore unique
-    if (errWeeks.code === '23505') {
-        return { error: 'Una delle settimane selezionate è stata appena prenotata. Ricarica la pagina.' }
-    }
-
-    return { error: 'Errore nel salvataggio delle settimane selezionate.' }
+    await supabase.from('enrollments').delete().eq('id', enrollment.id);
+    return { error: 'Errore salvataggio settimane.' };
   }
 
-  // --- 📧 INVIO EMAIL DI CONFERMA ---
-  // A questo punto l'iscrizione è salvata nel DB. Proviamo a mandare l'email.
-  // Usiamo un try/catch separato per non bloccare l'utente se l'email fallisce.
+  // --- 5. EMAIL ---
   try {
-    // Recuperiamo i dati necessari per l'email in parallelo per velocità
     const [profileRes, childRes, campRes] = await Promise.all([
       supabase.from('profiles').select('email, nome').eq('id', user.id).single(),
-      supabase.from('children').select('nome, cognome, cf').eq('id', payload.childId).single(), // Aggiunto CF per causale
+      supabase.from('children').select('nome, cognome, cf').eq('id', payload.childId).single(),
       supabase.from('camps').select('nome').eq('id', payload.campId).single()
     ]);
 
-    const profile = profileRes.data;
-    const child = childRes.data;
-    const camp = campRes.data;
-
-    if (profile && child && camp) {
+    if (profileRes.data && childRes.data && campRes.data) {
       await resend.emails.send({
-        from: 'SportEssence <noreply@sportessence.it>', // Metti la tua mail verificata
-        to: [profile.email],
-        subject: `Conferma Iscrizione - ${child.nome} ${child.cognome}`,
+        from: 'SportEssence <noreply@sportessence.it>', 
+        to: [profileRes.data.email],
+        subject: `Conferma Iscrizione - ${childRes.data.nome}`,
         react: ConfirmEmail({
-          parentName: profile.nome,
-          childName: `${child.nome} ${child.cognome}`,
-          childCF: child.cf,            // Ora TypeScript riconosce questo campo
-          campName: camp.nome,
-          amount: payload.totalPrice,
+          parentName: profileRes.data.nome,
+          childName: `${childRes.data.nome} ${childRes.data.cognome}`,
+          childCF: childRes.data.cf,
+          campName: campRes.data.nome,
+          amount: serverDeltaToPay,
           iban: BANK_INFO.iban,
-          reservationId: enrollment.id  // E anche questo
+          reservationId: enrollment.id
         }) as any,
       });
     }
-  } catch (emailError) {
-    // Logghiamo l'errore ma NON ritorniamo errore all'utente, perché l'iscrizione è valida.
-    console.error("⚠️ Errore invio email conferma:", emailError);
-  }
-  // ----------------------------------
+  } catch (e) { console.error("Email error", e); }
 
-  revalidatePath('/Utente')
-  return { success: true, enrollmentId: enrollment.id }
+  revalidatePath('/Utente');
+  return { success: true, enrollmentId: enrollment.id };
 }
-
-

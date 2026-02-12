@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/app/actions/auth";
-import { Turnstile } from '@marsidev/react-turnstile'; // Assicurati di aver installato: npm install @marsidev/react-turnstile
+import { Turnstile, TurnstileInstance } from '@marsidev/react-turnstile'; // Assicurati di aver installato: npm install @marsidev/react-turnstile
 
 export default function Login() {
   const router = useRouter();
+  
+  const turnstileRef = useRef<TurnstileInstance>(null);
   
   const [form, setForm] = useState({
     email: "",
@@ -62,8 +64,8 @@ export default function Login() {
       if (result?.error) {
         showAlert(result.error);
         setIsSubmitting(false);
-        // Resetta il widget in caso di errore (opzionale, ma consigliato)
         setToken(null); 
+        turnstileRef.current?.reset(); 
         return;
       }
 
@@ -78,6 +80,8 @@ export default function Login() {
       console.error("Login error:", error);
       showAlert("Errore di connessione");
       setIsSubmitting(false);
+      setToken(null);
+      turnstileRef.current?.reset();
     }
   };
 
@@ -137,13 +141,14 @@ export default function Login() {
           {/* WIDGET CLOUDFLARE TURNSTILE */}
           <div className="flex justify-center py-2">
             <Turnstile 
-  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
-  onSuccess={(token) => setToken(token)}
-  options={{
-    appearance: 'always', // Forza l'esecuzione
-    theme: 'light',
-  }}
-/>
+              ref={turnstileRef}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""} 
+              onSuccess={(token) => setToken(token)}
+              options={{
+                appearance: 'always',
+                theme: 'light',
+              }}
+            />
           </div>
 
           <button

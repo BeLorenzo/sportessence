@@ -3,28 +3,58 @@
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
 import PaymentConfirmEmail from "../components/emails/ricevutaPronta"; 
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '../utils/supabase/server'; // Client Standard (per Auth)
+import { createClient as createAdminClient } from '@supabase/supabase-js'; // Client Admin (per azioni DB)
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // --- HELPER SUPER ADMIN ---
+// Questo client ha i superpoteri (Service Role). 
+// Va usato SOLO dopo aver controllato i permessi con checkAdminPermissions().
 function getAdminSupabase() {
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Manca la SUPABASE_SERVICE_ROLE_KEY nel file .env.local");
   }
-  return createClient(
+  return createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!, 
     { auth: { persistSession: false } }
   );
 }
 
+// --- HELPER SICUREZZA OTTIMIZZATO ---
+// Controlla i metadati del token JWT (app_metadata).
+// È più veloce perché non deve interrogare la tabella 'profiles'.
+async function checkAdminPermissions() {
+  const supabaseAuth = await createClient(); // Client standard (cookie based)
+  
+  const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+  
+  if (authError || !user) {
+    return { authorized: false, error: "Utente non autenticato." };
+  }
+
+  // --- IL NUOVO CONTROLLO ---
+  // Verifica diretta sui metadati protetti dell'utente
+  const isAdmin = user.app_metadata?.role === 'admin';
+
+  if (!isAdmin) {
+    return { authorized: false, error: "Accesso negato: Non sei un amministratore." };
+  }
+
+  return { authorized: true, user };
+}
+
 // 1. REGISTRA PAGAMENTO
 export async function registerPayment(enrollmentId: string, amountToAdd: number) {
-  const supabase = getAdminSupabase();
+  // --- BLOCCO SICUREZZA ---
+  const authCheck = await checkAdminPermissions();
+  if (!authCheck.authorized) return { success: false, error: authCheck.error };
+  // ------------------------
+
+  const supabase = getAdminSupabase(); 
   
-  // FASE 1: Recupero l'iscrizione (SOLO dati iscrizione)
-  // Nota: usiamo 'campi_id' come mi hai detto che si chiama la colonna
+  // FASE 1: Recupero l'iscrizione
   const { data: enrollment, error: fetchError } = await supabase
     .from('enrollments')
     .select('id, pagato, prezzo_totale, stato, child_id, camp_id') 
@@ -33,32 +63,33 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
     
   if (fetchError || !enrollment) {
     console.error("Errore fetch enrollment:", fetchError);
-    return { success: false, error: "Iscrizione non trovata o errore DB: " + fetchError?.message };
+    return { success: false, error: "Iscrizione non trovata o errore DB." };
   }
 
-  // FASE 2: Recupero il Bambino per trovare il Genitore (user_id)
-  // Dobbiamo sapere di chi è questo bambino per mandare la mail
+  // FASE 2: Recupero il Bambino per trovare il Genitore
   const { data: child, error: childError } = await supabase
     .from('children')
-    .select('nome, cognome, parent_id') // Assumo che 'children' abbia 'user_id' che punta al genitore
+    .select('nome, cognome, parent_id')
     .eq('id', enrollment.child_id)
     .single();
 
   if (childError || !child) {
     console.error("Errore fetch child:", childError);
-    return { success: false, error: "Bambino non trovato. Impossibile risalire al genitore." };
+    return { success: false, error: "Bambino non trovato." };
   }
 
   // Calcoli
   const currentPaid = enrollment.pagato || 0;
   const newTotal = currentPaid + amountToAdd;
   const isSaldato = newTotal >= enrollment.prezzo_totale;
+  const newStatus = isSaldato ? 'COMPLETED' : enrollment.stato;
   
   // FASE 3: Aggiornamento DB
   const { error: updateError } = await supabase
     .from('enrollments')
     .update({ 
       pagato: newTotal,
+      stato: newStatus,
       updated_at: new Date().toISOString()
     })
     .eq('id', enrollmentId);
@@ -68,10 +99,9 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
   // FASE 4: INVIO EMAIL (Solo se saldato)
   if (isSaldato) {
     try {
-      // Ora recuperiamo Genitore e Campo per completare i dati dell'email
       const [profileRes, campRes] = await Promise.all([
         supabase.from('profiles').select('nome, cognome, email, email_contatti').eq('id', child.parent_id).single(),
-        supabase.from('camps').select('nome').eq('id', enrollment.camp_id).single() // Nota: campi_id dall'iscrizione
+        supabase.from('camps').select('nome').eq('id', enrollment.camp_id).single()
       ]);
 
       const profile = profileRes.data;
@@ -83,7 +113,6 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
         const dateStr = new Date().toLocaleDateString('it-IT');
         const dashboardUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.sportessence.it'}/Utente`;
         
-        // Usa email_contatti se c'è, altrimenti quella di login
         const emailDestinatario = profile.email_contatti || profile.email;
 
         await resend.emails.send({
@@ -99,12 +128,10 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
               dashboardUrl: dashboardUrl
           }) as any,
         });
-      } else {
-        console.warn("Dati profilo o campo mancanti per l'email");
       }
-
     } catch (emailErr) {
       console.error("Errore invio email:", emailErr);
+      // Non ritorniamo false perché il pagamento è comunque salvato
       revalidatePath('/admin');
       return { success: true, warning: "Pagamento salvato, ma errore email." };
     }
@@ -114,88 +141,51 @@ export async function registerPayment(enrollmentId: string, amountToAdd: number)
   return { success: true };
 }
 
-// 2. APPLICA SCONTO (Corretto con Admin Client)
-export async function applyMembershipDiscount(enrollmentId: string) {
-  const supabase = getAdminSupabase();
-
-  const { data: enrollment, error: fetchError } = await supabase
-    .from('enrollments')
-    .select(`
-      prezzo_totale, 
-      pagato, 
-      stato, 
-      discount_applied,
-      camps (membership_discount_percent)
-    `)
-    .eq('id', enrollmentId)
-    .single();
-
-  if (fetchError || !enrollment) {
-    console.error("Errore fetch dati:", fetchError);
-    return { success: false, error: "Errore lettura dati" };
-  }
-
-  // 2. Controlli di sicurezza
-  if (enrollment.discount_applied) {
-    return { success: false, error: "Sconto già applicato!" };
-  }
-
-  // Recuperiamo la percentuale dalla relazione (gestendo il fatto che camps potrebbe essere un array o oggetto)
-  const campData = Array.isArray(enrollment.camps) ? enrollment.camps[0] : enrollment.camps;
-  const discountPercent = campData?.membership_discount_percent || 0;
-
-  if (discountPercent <= 0) {
-    return { success: false, error: "Nessuno sconto previsto per questo campo (0%)" };
-  }
-
-  // 3. Calcolo Sconto
-  // Calcoliamo quanto togliere. Esempio: 15% di 200€ = 30€
-  const prezzoAttuale = Number(enrollment.prezzo_totale);
-  const discountAmount = (prezzoAttuale * discountPercent) / 100;
-  
-  // Nuovo prezzo
-  const newPrice = Math.max(0, prezzoAttuale - discountAmount);
-
-  // 4. Ricalcolo Stato (fondamentale!)
-  const pagato = Number(enrollment.pagato || 0);
-  const isSaldato = pagato >= newPrice;
-  const newStatus = isSaldato ? 'saldato' : (enrollment.stato || 'acconto');
-
-  // 5. Update
-  const { error: updateError } = await supabase
-    .from('enrollments')
-    .update({ 
-      prezzo_totale: newPrice,
-      discount_applied: true, // Blocchiamo futuri sconti
-      discount_amount: discountAmount, // Salviamo quanto abbiamo tolto (utile per UI)
-      stato: newStatus,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', enrollmentId);
-
-  if (updateError) return { success: false, error: updateError.message };
-  
-  revalidatePath('/admin/Dashboard');
-  return { success: true };
-}
-
-// 3. MODIFICA COMPLETA (Corretto con Admin Client)
+// 3. MODIFICA COMPLETA
 export async function updateEnrollmentDetails(
   enrollmentId: string, 
   newPrice: number, 
   newCampId: string
 ) {
+  // --- BLOCCO SICUREZZA ---
+  const authCheck = await checkAdminPermissions();
+  if (!authCheck.authorized) return { success: false, error: authCheck.error };
+  // ------------------------
+
   const supabase = getAdminSupabase();
 
   const { error } = await supabase
     .from('enrollments')
     .update({ 
       prezzo_totale: newPrice,
-      camp_id: newCampId // Corretto: usa 'campi_id'
+      camp_id: newCampId
     })
     .eq('id', enrollmentId);
 
   if (error) return { success: false, error: error.message };
+
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+// 4. ELIMINA ISCRIZIONE
+export async function deleteEnrollment(enrollmentId: string) {
+  // --- BLOCCO SICUREZZA ---
+  const authCheck = await checkAdminPermissions();
+  if (!authCheck.authorized) return { success: false, error: authCheck.error };
+  // ------------------------
+
+  const supabaseAdmin = getAdminSupabase();
+
+  const { error: deleteError } = await supabaseAdmin
+    .from('enrollments')
+    .delete()
+    .eq('id', enrollmentId);
+
+  if (deleteError) {
+    console.error("Errore eliminazione:", deleteError);
+    return { success: false, error: "Impossibile eliminare. Controlla settimane o pagamenti collegati." };
+  }
 
   revalidatePath('/admin');
   return { success: true };

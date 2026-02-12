@@ -1,17 +1,17 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, Children } from "react";
 import { useRouter } from "next/navigation";
 import { 
   Users, CreditCard, Calendar, Search, 
   FileText, ChevronDown, ChevronUp, Phone, Mail, User, 
   Edit, CheckCircle, PlusCircle, Tag, TrendingUp, Package,
   Baby, Shirt, AlertTriangle, X,
-  MapPin, Download, Loader2
+  MapPin, Download, Loader2, Trash2
 } from "lucide-react";
 import { pdf } from '@react-pdf/renderer';
 import { PresenzePDF } from '../../components/PresenzePDF'; 
-import { registerPayment, applyMembershipDiscount, updateEnrollmentDetails } from "../actions";
+import { registerPayment, updateEnrollmentDetails, deleteEnrollment } from "../actions";
 
 // --- TIPI ---
 type DashboardProps = {
@@ -31,7 +31,7 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
 
   // --- STATI MODALI ---
   const [activeModal, setActiveModal] = useState<{
-    type: 'PAYMENT' | 'EDIT' | 'CHILD' | 'PARENT' | null,
+    type: 'PAYMENT' | 'EDIT' | 'CHILD' | 'PARENT' | 'DELETE' | null,
     enrollmentId: string | null,
     data?: any
   }>({ type: null, enrollmentId: null });
@@ -48,13 +48,24 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
   const enrichedEnrollments = useMemo(() => {
     if (!enrollments) return [];
     return enrollments.map(enrollment => {
-      const parentId = enrollment.children?.parent_id;
-      const parentProfile = profiles?.find(p => p.id === parentId);
-      
       const child = enrollment.children;
+      const parentId = child?.parent_id;
+      const parentProfile = profiles?.find(p => p.id === parentId);
+
       const hasMedicalIssues = Array.isArray(child?.intolleranze) && child.intolleranze.length > 0;
 
-      return { ...enrollment, parent: parentProfile, hasMedicalIssues };
+      let age = null;
+      if (child?.data_nascita) {
+        const birthDate = new Date(child.data_nascita);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+      }
+
+      return { ...enrollment, parent: parentProfile, hasMedicalIssues, age };
     });
   }, [enrollments, profiles]);
 
@@ -318,13 +329,25 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
     else { alert("Errore: " + res.error); }
   };
 
-  const handleApplyDiscount = async (id: string) => {
-    if (!confirm("Confermi di voler applicare lo sconto tesseramento?")) return;
+  const handleDeleteSubmit = async () => {
+    if (!activeModal.enrollmentId) return;
+
     setLoadingAction(true);
-    const res = await applyMembershipDiscount(id);
-    setLoadingAction(false);
-    if (res.success) { router.refresh(); } 
-    else { alert("Errore: " + res.error); }
+    try {
+      const res = await deleteEnrollment(activeModal.enrollmentId);
+      
+      if (res.success) {
+        closeModal();
+        router.refresh();
+      } else {
+        alert("Errore durante l'eliminazione: " + res.error);
+      }
+    } catch (error) {
+      console.error("Errore delete:", error);
+      alert("Errore di connessione.");
+    } finally {
+      setLoadingAction(false);
+    }
   };
 
   const toggleRow = (id: string) => {
@@ -492,7 +515,7 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Codice Fiscale</span>
-                  <span className="text-sm font-mono font-medium text-gray-900">{child.codice_fiscale || "Non specificato"}</span>
+                  <span className="text-sm font-mono font-medium text-gray-900">{child.cf || "Non specificato"}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Data di Nascita</span>
@@ -672,84 +695,85 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
   };
 
   const EnrollmentDetails = ({ enrollment }: { enrollment: any }) => (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1">
-            <h4 className="text-xs font-extrabold text-gray-700 uppercase mb-3 flex items-center gap-2 tracking-wider">
-                <Calendar size={16} className="text-blue-600"/> Dettaglio Settimane
-            </h4>
-            <div className="space-y-2">
-                {enrollment.enrollment_weeks?.map((ew: any) => (
-                    <div key={ew.id} className="bg-white p-2.5 rounded border border-gray-200 text-sm shadow-sm flex justify-between items-center">
-                        <div>
-                            <div className="font-semibold text-gray-800">{ew.camp_weeks?.label || "Settimana"}</div>
-                            <div className="text-[10px] text-gray-500">
-                                {ew.type === 'FULL' ? 'Intera' : 'Mezza'} • {ew.pre_post !== 'NONE' ? ew.pre_post : 'No Pre/Post'}
-                            </div>
-                        </div>
-                        <div className="font-mono font-bold text-gray-700">€{ew.computed_price}</div>
-                    </div>
-                ))}
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* COLONNA SINISTRA: RIEPILOGO SETTIMANE */}
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
+        <h4 className="text-[10px] font-extrabold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+          <Calendar size={14} className="text-blue-600"/> Settimane Selezionate
+        </h4>
+        <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+          {enrollment.enrollment_weeks?.length} Totali
+        </span>
+      </div>
+      <div className="p-3 space-y-2 max-h-[250px] overflow-y-auto">
+        {enrollment.enrollment_weeks?.map((ew: any) => (
+          <div key={ew.id} className="flex justify-between items-center p-2 rounded-lg hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-colors">
+            <div className="flex flex-col">
+              <span className="text-sm font-bold text-gray-800">{ew.camp_weeks?.label || "Settimana"}</span>
+              <div className="flex gap-2 mt-0.5">
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${ew.type === 'FULL' ? 'bg-indigo-50 text-indigo-600' : 'bg-orange-50 text-orange-600'}`}>
+                  {ew.type === 'FULL' ? 'INTERA' : 'MEZZA'}
+                </span>
+                {ew.pre_post !== 'NONE' && (
+                  <span className="text-[9px] font-bold bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded">
+                    +{ew.pre_post}
+                  </span>
+                )}
+              </div>
             </div>
-        </div>
-
-        <div className="lg:col-span-1 space-y-4">
-            <h4 className="text-xs font-extrabold text-gray-700 uppercase mb-3 flex items-center gap-2 tracking-wider">
-                <Tag size={16} className="text-orange-600"/> Scontistica
-            </h4>
-            
-            {enrollment.discount_applied ? (
-                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200 shadow-sm">
-                    <div className="flex items-center gap-2 text-emerald-800 font-bold mb-1">
-                        <CheckCircle size={18} /> Sconto Applicato
-                    </div>
-                    <p className="text-xs text-emerald-700">
-                        Sconto tesseramento registrato.
-                        {enrollment.discount_amount > 0 && <span className="font-bold"> (-€{enrollment.discount_amount})</span>}
-                    </p>
-                </div>
-            ) : enrollment.camps?.membership_type === 'OPTIONAL' ? (
-                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold text-gray-800 text-sm">Tesseramento</span>
-                        <span className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded border border-purple-200 font-bold uppercase">Optional</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-3 leading-tight">Il campo prevede uno sconto facoltativo. Verifica i requisiti.</p>
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); handleApplyDiscount(enrollment.id); }}
-                        disabled={loadingAction}
-                        className="w-full py-2 border-2 border-dashed border-purple-300 text-purple-700 rounded-lg font-bold text-xs hover:bg-purple-50 transition-all flex items-center justify-center gap-2"
-                    >
-                        {loadingAction ? '...' : <><CheckCircle size={14}/> Applica Sconto</>}
-                    </button>
-                </div>
-            ) : (
-                <div className="p-4 text-xs text-gray-500 italic text-center border border-dashed rounded-lg">Nessuno sconto disponibile.</div>
-            )}
-        </div>
-
-        <div className="lg:col-span-1">
-            <h4 className="text-xs font-extrabold text-gray-700 uppercase mb-3 flex items-center gap-2 tracking-wider">
-                <FileText size={16} className="text-blue-600"/> Azioni & Riepilogo
-            </h4>
-            <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm space-y-3">
-                 <div className="flex gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); setActiveModal({ type: 'PAYMENT', enrollmentId: enrollment.id }); }} className="flex-1 flex items-center justify-center gap-2 p-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-all font-bold text-sm shadow-sm shadow-green-200">
-                        <PlusCircle size={16}/> Pagamento
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setActiveModal({ type: 'EDIT', enrollmentId: enrollment.id, data: { price: enrollment.prezzo_totale, campId: enrollment.camps?.id } }); }} className="p-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg border border-gray-200">
-                        <Edit size={18}/>
-                    </button>
-                 </div>
-                
-                <div className="border-t border-gray-100 my-2 pt-2 text-sm space-y-1">
-                    <div className="flex justify-between"><span className="text-gray-600">Prezzo Totale:</span><span className="font-bold text-gray-900">€ {enrollment.prezzo_totale}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-600">Già Pagato:</span><span className="font-bold text-green-700">€ {enrollment.pagato}</span></div>
-                    <div className="flex justify-between pt-1 border-t border-dashed border-gray-200"><span className="font-bold text-gray-800">Da Saldare:</span><span className="font-extrabold text-red-600">€ {(enrollment.prezzo_totale - enrollment.pagato).toFixed(2)}</span></div>
-                </div>
-            </div>
-        </div>
+            <div className="text-sm font-mono font-bold text-gray-600">€{ew.computed_price}</div>
+          </div>
+        ))}
+      </div>
     </div>
-  );
+
+    {/* COLONNA DESTRA: FINANZE E AZIONI */}
+    <div className="flex flex-col gap-4">
+      {/* BOX ECONOMICO */}
+      <div className="bg-blue-50/50 rounded-xl border border-blue-100 p-4 flex flex-col justify-between">
+        <div className="grid grid-cols-2 gap-4 mb-4 text-center">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-blue-600 uppercase">Totale</span>
+            <span className="text-lg font-extrabold text-gray-900">€{enrollment.prezzo_totale}</span>
+          </div>
+          <div className="flex flex-col border-l border-blue-100">
+            <span className="text-[10px] font-bold text-red-600 uppercase">Residuo</span>
+            <span className="text-lg font-extrabold text-red-600">
+              €{(enrollment.prezzo_totale - enrollment.pagato).toFixed(2)}
+            </span>
+          </div>
+        </div>
+        
+        {/* AZIONI RAPIDE */}
+        <div className="flex gap-2">
+          <button 
+            onClick={(e) => { e.stopPropagation(); setActiveModal({ type: 'PAYMENT', enrollmentId: enrollment.id }); }} 
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-all font-bold text-xs shadow-sm shadow-green-100"
+          >
+            <CreditCard size={14}/> Paga
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setActiveModal({ type: 'EDIT', enrollmentId: enrollment.id, data: { price: enrollment.prezzo_totale, campId: enrollment.camps?.id } }); }} 
+            className="px-3 py-2.5 bg-white text-gray-600 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors shadow-sm"
+          >
+            <Edit size={16}/>
+          </button>
+          <button 
+            onClick={(e) => { e.stopPropagation(); setActiveModal({ type: 'DELETE', enrollmentId: enrollment.id }); }} 
+            className="px-3 py-2.5 bg-white text-red-500 hover:bg-red-50 rounded-lg border border-red-100 transition-colors shadow-sm"
+          >
+            <Trash2 size={16}/>
+          </button>
+        </div>
+      </div>
+      
+      <p className="text-[10px] text-gray-400 italic text-center px-4">
+        Iscrizione creata il {new Date(enrollment.created_at).toLocaleString('it-IT')}
+      </p>
+    </div>
+  </div>
+);
 
   return (
     <div className="space-y-6 font-sans relative pb-20">
@@ -811,6 +835,38 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+      )}
+      {activeModal.type === 'DELETE' && activeModal.enrollmentId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 animate-in fade-in zoom-in duration-200 border-t-4 border-red-600">
+                <div className="flex flex-col items-center text-center mb-6">
+                    <div className="p-3 bg-red-100 rounded-full text-red-600 mb-4">
+                        <Trash2 size={32} />
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900">Eliminare l'iscrizione?</h3>
+                    <p className="text-sm text-gray-500 mt-2">
+                        Stai per rimuovere definitivamente questa iscrizione dal database. 
+                        Questa azione <strong>non può essere annullata</strong>.
+                    </p>
+                </div>
+                
+                <div className="flex gap-3">
+                    <button 
+                        onClick={closeModal} 
+                        className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-lg font-bold hover:bg-gray-200 transition-colors"
+                    >
+                        Annulla
+                    </button>
+                    <button 
+                        onClick={handleDeleteSubmit} 
+                        disabled={loadingAction} 
+                        className="flex-1 py-2.5 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-md shadow-red-200 transition-colors flex justify-center items-center gap-2"
+                    >
+                        {loadingAction ? <Loader2 size={18} className="animate-spin"/> : 'Elimina Definitivamente'}
+                    </button>
+                </div>
             </div>
         </div>
       )}
@@ -1013,7 +1069,9 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
                                 <td className="p-4 align-top">
                                     <button onClick={() => openChildModal(enrollment)} className="flex items-center gap-2 text-left group">
                                       <Baby size={16} className="text-blue-500 group-hover:text-blue-700" />
-                                      <span className="font-bold text-blue-900 text-base group-hover:underline">{enrollment.children?.nome} {enrollment.children?.cognome}</span>
+                                      <span className="font-bold text-blue-900 text-base group-hover:underline">
+                                      {enrollment.children?.nome} {enrollment.children?.cognome} - {enrollment.age !== null ? `${enrollment.age} anni` : 'Età N/D'}
+                                      </span>
                                       {enrollment.hasMedicalIssues && (
                                         <AlertTriangle size={16} className="text-amber-500" />
                                       )}

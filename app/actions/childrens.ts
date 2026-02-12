@@ -221,10 +221,7 @@ export async function deleteChild(childId: string) {
   
   // 1. Verifica autenticazione
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-  
-  if (authError || !user) {
-    return { error: 'Non autenticato' }
-  }
+  if (authError || !user) return { error: 'Non autenticato' }
 
   // 2. Verifica che il bambino appartenga all'utente
   const { data: existingChild, error: checkError } = await supabase
@@ -233,35 +230,45 @@ export async function deleteChild(childId: string) {
     .eq('id', childId)
     .single()
 
-  if (checkError || !existingChild) {
-    return { error: 'Bambino non trovato' }
-  }
+  if (checkError || !existingChild) return { error: 'Bambino non trovato' }
+  if (existingChild.parent_id !== user.id) return { error: 'Non autorizzato' }
 
-  if (existingChild.parent_id !== user.id) {
-    return { error: 'Non autorizzato' }
-  }
-
-  // 3. Verifica se ci sono iscrizioni attive
-  // Il trigger trg_check_active_enrollments_child dovrebbe bloccare automaticamente,
-  // ma facciamo un check preventivo per dare un messaggio più chiaro
-  const { data: activeEnrollments } = await supabase
-    .from('enrollments')
-    .select('id, camps(nome, data_fine)')
+  // 3. VERIFICA SETTIMANE ATTIVE
+  // Query per trovare tutte le settimane di campo associate al bambino
+  const { data: bookedWeeks, error: weeksError } = await supabase
+    .from('enrollment_weeks')
+    .select(`
+      camp_weeks!inner (
+        data_fine
+      )
+    `)
     .eq('child_id', childId)
 
-  if (activeEnrollments && activeEnrollments.length > 0) {
-    const hasActive = activeEnrollments.some(e => 
-      e.camps && Array.isArray(e.camps) && e.camps.length > 0 && new Date(e.camps[0].data_fine) >= new Date()
-    )
+  if (weeksError) {
+    console.error("Errore controllo settimane:", weeksError)
+    return { error: "Errore durante il controllo delle date." }
+  }
+
+  // Se ci sono settimane prenotate, controlliamo se sono future
+  if (bookedWeeks && bookedWeeks.length > 0) {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset ore per confronto solo sulla data
+
+    // Verifica se esiste almeno una settimana non ancora conclusa
+    const hasActiveWeeks = bookedWeeks.some((row: any) => {
+      const dataFineSettimana = new Date(row.camp_weeks.data_fine)
+      dataFineSettimana.setHours(0, 0, 0, 0) // Reset ore
+      return dataFineSettimana >= today
+    })
     
-    if (hasActive) {
+    if (hasActiveWeeks) {
       return { 
-        error: 'Impossibile eliminare: ci sono iscrizioni attive per questo bambino. Attendi la fine dei campi o contattaci.' 
+        error: 'Impossibile eliminare: ci sono settimane di campo non ancora concluse. Potrai eliminare questo bambino solo dopo la fine dell\'ultimo campo prenotato.' 
       }
     }
   }
 
-  // 4. Elimina il bambino
+  // 4. Se tutto ok, elimina il bambino
   const { error: deleteError } = await supabase
     .from('children')
     .delete()
@@ -269,11 +276,86 @@ export async function deleteChild(childId: string) {
 
   if (deleteError) {
     console.error('Errore eliminazione bambino:', deleteError)
+    
+    // Gestione errore foreign key (se manca ON DELETE CASCADE)
+    if (deleteError.code === '23503') {
+      return { 
+        error: 'Impossibile eliminare: esistono dati collegati. Contatta l\'assistenza se il problema persiste.' 
+      }
+    }
+    
     return { error: deleteError.message }
   }
 
-  // 5. Ricarica la pagina
   revalidatePath('/Utente')
+  return { success: true }
+}
+
+// --- ELIMINA ACCOUNT UTENTE ---
+export async function deleteAccount() {
+  const supabase = await createClient()
+  
+  // 1. Verifica autenticazione
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { error: 'Non autenticato' }
+
+  // 2. Verifica che non ci siano bambini associati
+  const { data: children, error: childrenError } = await supabase
+    .from('children')
+    .select('id, nome, cognome')
+    .eq('parent_id', user.id)
+
+  if (childrenError) {
+    console.error('Errore controllo children:', childrenError)
+    return { error: 'Errore durante il controllo dei dati' }
+  }
+
+  if (children && children.length > 0) {
+    return { 
+      error: `Impossibile eliminare l'account: ci sono ancora ${children.length} bambino/i registrato/i. Elimina prima tutti i bambini.` 
+    }
+  }
+
+  // 3. Verifica pagamenti in sospeso (sicurezza extra)
+const { data: enrollments, error: enrollmentsError } = await supabase
+  .from('enrollments')
+  .select(`
+    prezzo_totale, 
+    pagato, 
+    children!inner(parent_id)
+  `)
+  .eq('children.parent_id', user.id); // Filtriamo sul parent_id dentro la tabella children
+
+if (enrollmentsError) {
+  console.error('Errore controllo enrollments:', enrollmentsError);
+  return { error: 'Errore durante il controllo dei pagamenti' };
+}
+
+if (enrollments && enrollments.length > 0) {
+  // Calcoliamo se c'è un debito (prezzo_totale > pagato)
+  const hasDebt = enrollments.some(e => {
+    const totale = e.prezzo_totale || 0;
+    const pagato = e.pagato || 0;
+    return (totale - pagato) > 0;
+  });
+
+  if (hasDebt) {
+    return { 
+      error: 'Impossibile eliminare l\'account: ci sono pagamenti in sospeso. Salda tutti i debiti prima di procedere.' 
+    };
+  }
+}
+
+  // 4. Elimina il profilo (CASCADE dovrebbe gestire le relazioni)
+  const { error: deleteError } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', user.id)
+
+  if (deleteError) {
+    console.error('Errore eliminazione profilo:', deleteError)
+    return { error: 'Errore durante l\'eliminazione del profilo: ' + deleteError.message }
+  }
 
   return { success: true }
 }

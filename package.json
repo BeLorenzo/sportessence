@@ -24,6 +24,7 @@
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
     "resend": "^6.8.0",
+    "supabase-utils": "^1.0.0",
     "tailwind-scrollbar": "^4.0.2"
   },
   "devDependencies": {

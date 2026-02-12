@@ -2,21 +2,36 @@ import Image from "next/image";
 import Link from "next/link";
 import AttivitaSlider from "@/app/components/attivitaSlider";
 import TestimonianzeSlider from "@/app/components/testimonianzeSlider";
-import prova from "@/public/imgs/immagineHome.jpeg";
+import immagineMobile from "@/public/imgs/immagineHome.jpeg";
+import immagineDesktop from "@/public/imgs/fotoHeroOriz.webp";
 
 export default function Home() {
   return (
     <main className="bg-cream text-blue-deep">
       {/* HERO */}
       <section className="relative h-screen overflow-hidden">
-        <Image
-          src={prova}
-          alt="Bambini che giocano al campo estivo"
-          fill
-          priority
-          className="object-cover object-center"
-        />
-      </section>
+  
+  <div className="block lg:hidden relative w-full h-full">
+    <Image
+      src={immagineMobile}
+      alt="Bambini che giocano - mobile"
+      fill
+      priority
+      className="object-cover object-center"
+    />
+  </div>
+
+  <div className="hidden lg:block relative w-full h-full">
+    <Image
+      src={immagineDesktop}
+      alt="Bambini che giocano - desktop"
+      fill
+      priority
+      className="object-cover object-center"
+    />
+  </div>
+
+</section>
 
       {/* CHI SIAMO */}
       <section className="bg-cream py-16 px-6 max-w-7xl mx-auto">

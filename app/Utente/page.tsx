@@ -10,7 +10,7 @@ import {
 import AddChildModal from "../components/addChildModal";
 import EditChildModal from "../components/editChildModal";
 import ProfileSection from "../components/profileSection";
-import { deleteChild } from "../actions/childrens";
+import { deleteChild, deleteAccount } from "../actions/childrens";
 import DeleteConfirmModal from "../components/deleteConfirmModal"; 
 import BankTransferBox from "../components/BankTransferBox";
 
@@ -161,7 +161,7 @@ const ChildCard = ({ child, enrollments, onEdit, onDelete, onRegister }: any) =>
 
           <div className="flex gap-2 items-center self-end md:self-center">
             <button onClick={() => onRegister(child.id)} className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 font-bold text-sm shadow-sm whitespace-nowrap">
-               <TrendingUp size={16}/> Nuova
+               <TrendingUp size={16}/> Nuova iscrizione
             </button>
             <button onClick={() => onEdit(child)} className="p-2 bg-white border border-gray-200 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors" title="Modifica Dati">
                <Edit2 size={18}/>
@@ -266,37 +266,57 @@ function UtenteContent() {
   // Handlers
   const handleRegister = (childId: string) => router.push(`/Iscrizione?child=${childId}`);
   
+  // HANDLER ELIMINAZIONE BAMBINO - ora semplicemente apre il modale
+  // La logica di controllo è nel backend (deleteChild)
   const handleDeleteChild = (child: Child) => {
-     if (enrollments[child.id]?.length > 0) {
-        showAlert("Impossibile eliminare: ci sono iscrizioni nello storico.", "error");
-        return;
-     }
      setDeleteModalConfig({ isOpen: true, type: "CHILD", data: child });
   };
 
+  // HANDLER ELIMINAZIONE ACCOUNT - ora semplicemente apre il modale
+  // La logica di controllo è nel backend (deleteAccount)
   const handleDeleteAccount = () => {
-     const hasDebt = Object.values(enrollments).flat().some(e => (e.prezzo_totale - e.pagato) > 0);
-     if (hasDebt) {
-        showAlert("Impossibile eliminare l'account: ci sono pagamenti in sospeso.", "error");
-        return;
-     }
      setDeleteModalConfig({ isOpen: true, type: "ACCOUNT", data: null });
   };
 
+  // ESECUZIONE ELIMINAZIONE
   const performDeletion = async () => {
      try {
        if(deleteModalConfig.type === "CHILD") {
-          await deleteChild(deleteModalConfig.data.id);
-          showAlert("Bambino eliminato correttamente", "success");
-          window.location.reload();
+          // Chiama la server action deleteChild
+          const result = await deleteChild(deleteModalConfig.data.id);
+          
+          if (result.error) {
+            showAlert(result.error, "error");
+            setDeleteModalConfig({ isOpen: false, type: null, data: null });
+            return;
+          }
+          
+          showAlert(`${deleteModalConfig.data.nome} ${deleteModalConfig.data.cognome} è stato eliminato correttamente`, "success");
+          setDeleteModalConfig({ isOpen: false, type: null, data: null });
+          
+          // Ricarica i dati
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+          
        } else if (deleteModalConfig.type === "ACCOUNT") {
-          const { error } = await supabase.from('profiles').delete().eq('id', profile!.id);
-          if (error) throw error;
+          // Chiama la server action deleteAccount
+          const result = await deleteAccount();
+          
+          if (result.error) {
+            showAlert(result.error, "error");
+            setDeleteModalConfig({ isOpen: false, type: null, data: null });
+            return;
+          }
+          
+          // Se l'eliminazione è andata a buon fine, esci dall'account
           await supabase.auth.signOut();
           router.push("/");
        }
      } catch(e: any) {
-        showAlert("Errore durante l'eliminazione: " + e.message);
+        console.error("Errore eliminazione:", e);
+        showAlert("Errore durante l'eliminazione: " + e.message, "error");
+        setDeleteModalConfig({ isOpen: false, type: null, data: null });
      }
   };
 
@@ -365,6 +385,11 @@ function UtenteContent() {
           </div>
           <p className="text-gray-600 mb-6 text-sm">
              Eliminando l'account perderai l'accesso a tutti i dati e allo storico delle iscrizioni.
+             {children.length > 0 && (
+                <span className="block mt-2 font-bold text-red-600">
+                   ⚠️ Prima di eliminare l'account, devi eliminare tutti i bambini registrati.
+                </span>
+             )}
           </p>
           <button onClick={handleDeleteAccount} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl hover:bg-red-50 transition-all flex items-center gap-2 font-bold text-sm">
             <Trash2 size={18} /> Elimina Account
@@ -379,8 +404,12 @@ function UtenteContent() {
           isOpen={deleteModalConfig.isOpen} 
           onClose={() => setDeleteModalConfig({ isOpen: false, type: null, data: null })} 
           onConfirm={performDeletion} 
-          title={deleteModalConfig.type === "ACCOUNT" ? "Elimina Account" : "Elimina Bambino"}
-          description={deleteModalConfig.type === "ACCOUNT" ? "Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile." : "Sei sicuro di voler eliminare questo bambino?"}
+          title={deleteModalConfig.type === "ACCOUNT" ? "Elimina Account" : `Elimina ${deleteModalConfig.data?.nome || 'Bambino'}`}
+          description={
+            deleteModalConfig.type === "ACCOUNT" 
+              ? "Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile e comporterà la perdita di tutti i tuoi dati." 
+              : `Sei sicuro di voler eliminare ${deleteModalConfig.data?.nome} ${deleteModalConfig.data?.cognome}? Questa azione è irreversibile.`
+          }
           confirmText="Elimina definitivamente" 
       />
     </>

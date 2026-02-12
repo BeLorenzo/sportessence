@@ -23,7 +23,7 @@ export default async function AdminDashboardPage() {
    // A. Campi (Verifica che 'membership_type' esista nel DB!)
   const { data: camps, error: campError } = await supabase
     .from('camps')
-    .select('id, nome, membership_type') 
+    .select('id, nome') 
     .order('nome');
   
   if (campError) console.error("Errore Campi:", campError);
@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
     .select(`
       *,
       children (id, nome, cognome, parent_id, cf, data_nascita, taglia_maglietta, intolleranze),
-      camps (id, nome, membership_type), 
+      camps (id, nome), 
       enrollment_weeks (
         id,
         type,        

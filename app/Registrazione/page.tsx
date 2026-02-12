@@ -76,30 +76,6 @@ export default function Registrazione() {
     setTimeout(() => setAlertMsg(null), 5000);
   };
 
-  const verificaIndirizzo = async () => {
-    const { via, civico, paese, provincia } = form;
-    const query = `${via} ${civico}, ${paese}, ${provincia}, Italia`;
-
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query)}`
-      );
-      const data = await res.json();
-
-      if (data.length > 0) {
-        const address = data[0].address;
-        if (address.postcode) {
-          setForm((prev) => ({ ...prev, cap: address.postcode }));
-        }
-        return true;
-      }
-      return false;
-    } catch (err) {
-      console.error("Errore verifica indirizzo:", err);
-      return false;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -133,14 +109,6 @@ export default function Registrazione() {
     const telefonoPulito = form.telefono.replace(/\s+/g, "");
     if (!phoneRegex.test(telefonoPulito)) {
       showAlert("Numero di telefono non valido (deve iniziare con 3 ed essere di 10 cifre)");
-      setIsSubmitting(false);
-      return;
-    }
-
-    // Verifica indirizzo
-    const indirizzoValido = await verificaIndirizzo();
-    if (!indirizzoValido) {
-      showAlert("Indirizzo non trovato su mappa. Controlla i dati.");
       setIsSubmitting(false);
       return;
     }
