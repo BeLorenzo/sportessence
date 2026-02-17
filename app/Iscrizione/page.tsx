@@ -87,6 +87,9 @@ function IscrizioneContent() {
   const [isPromoApplied, setIsPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
 
+  // NUOVO STATO PER TERMINI E CONDIZIONI
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
   const [priceQuote, setPriceQuote] = useState<LocalQuote | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -201,6 +204,7 @@ function IscrizioneContent() {
     setErrorMsg(null);
     setPromoCode("");
     setIsPromoApplied(false);
+    setAcceptTerms(false); // Reset checkbox quando cambia campo
   };
 
   const toggleWeek = (weekId: string) => {
@@ -367,6 +371,13 @@ function IscrizioneContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!priceQuote) return;
+    
+    // VALIDAZIONE TERMINI
+    if (!acceptTerms) {
+        setErrorMsg("Devi accettare il regolamento per procedere.");
+        return;
+    }
+
     setSubmitting(true); setErrorMsg(null);
 
     const weeksPayload = priceQuote.details.map((d: any) => ({
@@ -523,7 +534,7 @@ function IscrizioneContent() {
                                    {/* Etichetta Sconto */}
                                    {showDiscount && (
                                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold h-fit">
-                                           {d.discountReason || "Sconto serie settimane"}
+                                            {d.discountReason || "Sconto serie settimane"}
                                        </span>
                                    )}
                                </div>
@@ -536,7 +547,7 @@ function IscrizioneContent() {
                                        )}
                                        {/* PREZZO REALE */}
                                        <span className="font-bold text-gray-800">
-                                           €{d.price} {d.is_full ? "" : "(Mezza)"}
+                                            €{d.price} {d.is_full ? "" : "(Mezza)"}
                                        </span>
                                    </div>
                                    {d.extraPrice > 0 && <div className="text-cyan-700 font-medium">+ €{d.extraPrice} ({d.prePost === 'BOTH' ? 'Pre+Post' : d.prePost})</div>}
@@ -581,9 +592,33 @@ function IscrizioneContent() {
 
                   {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs flex gap-2 border border-red-100"><AlertTriangle size={14}/> {errorMsg}</div>}
 
-                  <button onClick={handleSubmit} disabled={submitting || priceQuote.total < 0} className="w-full bg-cyan-600 text-white py-4 rounded-xl font-bold hover:bg-cyan-700 transition-all shadow-lg hover:shadow-cyan-200/50 disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2 group">
+                  <button 
+                    onClick={handleSubmit} 
+                    disabled={submitting || priceQuote.total < 0 || !acceptTerms} 
+                    className={`w-full py-4 rounded-xl font-bold transition-all shadow-lg flex justify-center items-center gap-2 group ${
+                      (submitting || priceQuote.total < 0 || !acceptTerms) 
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed shadow-none" 
+                      : "bg-cyan-600 text-white hover:bg-cyan-700 hover:shadow-cyan-200/50"
+                    }`}
+                  >
                     {submitting ? <><Loader2 className="animate-spin" size={20}/> Elaborazione...</> : <>Conferma Iscrizione <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/></>}
                   </button>
+
+                  {/* CHECKBOX REGOLAMENTO (SOTTO IL BOTTONE) */}
+                  <div className="mt-4 flex justify-center">
+                    <label className="flex items-start gap-2 cursor-pointer opacity-90 hover:opacity-100 transition-opacity select-none">
+                       <input 
+                         type="checkbox" 
+                         checked={acceptTerms}
+                         onChange={(e) => setAcceptTerms(e.target.checked)}
+                         className="mt-0.5 accent-cyan-600 w-4 h-4 cursor-pointer"
+                       />
+                       <span className="text-xs text-gray-600 leading-tight">
+                         Dichiaro di aver letto e di accettare il <a href="/regolamentoSportEssence.pdf" target="_blank" rel="noopener noreferrer" className="text-cyan-700 font-bold hover:underline" onClick={(e) => e.stopPropagation()}>Regolamento del camp</a>.
+                       </span>
+                    </label>
+                  </div>
+
                 </div>
               </div>
             ) : (

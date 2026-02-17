@@ -18,9 +18,9 @@ export default async function CampiPage() {
   const campGalleriesMap: Record<string, string[]> = {
     "Cadorago Summer Camp": [
         "/imgs/locandine/Cadorago/cadoragoLocandina1.jpeg", 
-        "/imgs/locandine/Cadorago/cadoragoLocandina2.jpeg",    
-        "/imgs/locandine/Cadorago/cadoragoLocandina3.jpeg",     
-        "/imgs/locandine/Cadorago/cadoragoLocandina4.jpeg"      
+        //"/imgs/locandine/Cadorago/cadoragoLocandina2.jpeg",    
+       // "/imgs/locandine/Cadorago/cadoragoLocandina3.jpeg",     
+       // "/imgs/locandine/Cadorago/cadoragoLocandina4.jpeg"      
     ],
     "Castello Città di Cantù Summer Camp": [
         "/imgs/locandine/Cantu/castelloLocandina1.jpeg",

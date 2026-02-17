@@ -149,13 +149,14 @@ export default function Privacy() {
             </h2>
             <p className="text-gray-700 leading-relaxed mb-3">
               Questo sito utilizza <strong>esclusivamente cookie tecnici</strong> necessari 
-              per il funzionamento del servizio di autenticazione (gestito da Supabase).
+              per il funzionamento e la sicurezza del sito.
             </p>
             
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-gray-700">
-                ✓ <strong>Cookie tecnici di sessione</strong>: Necessari per mantenere 
-                l'autenticazione dell'utente durante la navigazione<br />
+                ✓ <strong>Cookie tecnici di sessione</strong>: Gestiti da Supabase per l'autenticazione<br />
+                ✓ <strong>Tecnologie di sicurezza</strong>: Utilizziamo Cloudflare Turnstile per la protezione da bot e spam. 
+                Questo servizio non traccia gli utenti per fini commerciali.<br />
                 ✓ <strong>Non utilizziamo</strong> cookie di profilazione, analytics o marketing<br />
                 ✓ <strong>Non è richiesto il consenso</strong> per i cookie tecnici (art. 122 
                 del Codice Privacy)
@@ -166,13 +167,38 @@ export default function Privacy() {
           {/* Modalità di Trattamento */}
           <div>
             <h2 className="text-2xl font-bold text-blue-deep mb-4">
-              Modalità di Trattamento
+              Modalità di Trattamento e Luogo
             </h2>
+            <p className="text-gray-700 leading-relaxed mb-4">
+              I dati personali sono trattati esclusivamente con strumenti elettronici e automatizzati, 
+              per il tempo strettamente necessario a conseguire gli scopi per cui sono stati raccolti. 
+              I dati sono conservati su server sicuri situati preferibilmente all'interno dell'Unione Europea 
+              o in paesi che garantiscono un livello di protezione adeguato (conformità GDPR o Data Privacy Framework).
+            </p>
+            
+            <p className="text-gray-700 leading-relaxed mb-2 font-semibold">
+              I provider tecnologici (Responsabili del Trattamento) utilizzati sono:
+            </p>
+            
+            <ul className="list-disc list-inside text-gray-700 leading-relaxed mb-4 space-y-1 ml-2">
+              <li>
+                <strong>Supabase:</strong> Piattaforma di Database e Autenticazione (gestione profili utenti e dati iscrizioni).
+              </li>
+              <li>
+                <strong>Vercel Inc.:</strong> Infrastruttura di Hosting del sito web, gestione dei log di sistema e sicurezza serverless.
+              </li>
+              <li>
+                <strong>Resend:</strong> Servizio per l'invio di email transazionali (es. conferme di iscrizione, reset password).
+              </li>
+              <li>
+                <strong>Cloudflare (Turnstile):</strong> Servizio di sicurezza per la protezione da bot e spam nei moduli.
+              </li>
+            </ul>
+
             <p className="text-gray-700 leading-relaxed">
-              I dati personali sono trattati con strumenti elettronici e conservati su 
-              server sicuri gestiti da Supabase (servizio cloud conforme GDPR). 
-              Sono adottate misure di sicurezza organizzative, tecniche e logiche per 
-              prevenire la perdita, l'uso illecito o non corretto e l'accesso non autorizzato.
+              Specifiche misure di sicurezza sono osservate per prevenire la perdita dei dati, 
+              usi illeciti o non corretti ed accessi non autorizzati. 
+              Le comunicazioni tra l'utente e il server avvengono esclusivamente tramite protocollo sicuro e crittografato (HTTPS/TLS).
             </p>
           </div>
 
@@ -266,7 +292,7 @@ export default function Privacy() {
 
           {/* Data ultima modifica */}
           <div className="border-t pt-6 text-sm text-gray-500">
-            <p>Ultimo aggiornamento: 29 dicembre 2025</p>
+            <p>Ultimo aggiornamento: Febbraio 2026</p>
           </div>
         </div>
 

@@ -49,7 +49,7 @@ const teamMembers = [
   },
   {
     name: "Eduardo Romeo",
-    image: "/imgs/team/eduardoRomeo.png",
+    image: "/imgs/team/eduardoRomeo.jpeg",
     bio: "Con una profonda esperienza nell'educazione non formale, Eduardo progetta e supervisiona le attività quotidiane. Il suo focus è sull'equilibrio tra sicurezza e avventura, garantendo che ogni gioco abbia anche un valore educativo oltre che ludico.",
     quote: "Educare significa tirare fuori il meglio da ogni ragazzo, spesso semplicemente facendolo giocare.",
     color: "rose"
