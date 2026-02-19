@@ -10,23 +10,32 @@ export const revalidate = 0;
 export default async function CampiPage() {
 
   const campImagesMap: Record<string, string> = {
-    "Cadorago Summer Camp": "/imgs/locandine/Cadorago/cadoragoLocandina1.jpeg",
-    "Castello Città di Cantù Summer Camp": "/imgs/locandine/Cantu/castelloLocandina1.jpeg",
-    "Uggiate Summer Camp": "/imgs/locandine/Uggiate/uggiateLocandina1.jpeg"
+    "Cadorago Summer Camp": "/imgs/locandine/Cadorago/cadoragoLocandina1.png",
+    "Castello Città di Cantù Summer Camp": "/imgs/locandine/Cantu/castelloLocandina1.png",
+    "Uggiate con Ronago Summer Camp": "/imgs/locandine/Uggiate/muliniLocandina1.png" 
   };
 
   const campGalleriesMap: Record<string, string[]> = {
     "Cadorago Summer Camp": [
-        "/imgs/locandine/Cadorago/cadoragoLocandina1.jpeg", 
-        //"/imgs/locandine/Cadorago/cadoragoLocandina2.jpeg",    
-       // "/imgs/locandine/Cadorago/cadoragoLocandina3.jpeg",     
-       // "/imgs/locandine/Cadorago/cadoragoLocandina4.jpeg"      
+        "/imgs/locandine/Cadorago/cadoragoLocandina1.png", 
+        "/imgs/locandine/Cadorago/cadoragoLocandina2.png",    
+        "/imgs/locandine/Cadorago/cadoragoLocandina3.png",     
+        "/imgs/locandine/Cadorago/cadoragoLocandina4.png"      
     ],
     "Castello Città di Cantù Summer Camp": [
-        "/imgs/locandine/Cantu/castelloLocandina1.jpeg",
+        "/imgs/locandine/Cantu/castelloLocandina1.png",
+        "/imgs/locandine/Cantu/castelloLocandina2.png",
+        "/imgs/locandine/Cantu/castelloLocandina3.png",
+        "/imgs/locandine/Cantu/castelloLocandina4.png",
+        "/imgs/locandine/Cantu/castelloLocandina5.png", 
     ],
-    "Uggiate Summer Camp": [
-        "/imgs/locandine/Uggiate/uggiateLocandina1.jpeg",
+    "Uggiate con Ronago Summer Camp": [
+        "/imgs/locandine/Uggiate/muliniLocandina1.png",
+        "/imgs/locandine/Uggiate/muliniLocandina2.png",
+        "/imgs/locandine/Uggiate/muliniLocandina3.png",
+        "/imgs/locandine/Uggiate/muliniLocandina4.png",
+        "/imgs/locandine/Uggiate/muliniLocandina5.png",
+        "/imgs/locandine/Uggiate/muliniLocandina6.png",
     ]
   };
 

@@ -32,6 +32,18 @@ export async function createEnrollment(payload: EnrollmentPayload) {
     return { error: 'Seleziona almeno una settimana' }
   }
 
+  // --- 0. RECUPERO INFO CAMPO (Ottimizzato: lo facciamo una volta sola) ---
+  const { data: campData, error: campError } = await supabase
+    .from('camps')
+    .select('nome')
+    .eq('id', payload.campId)
+    .single();
+
+  if (campError || !campData) return { error: 'Campo non trovato' };
+  
+  const campName = campData.nome;
+  const campNameLower = campName.toLowerCase();
+
   // --- 1. VERIFICA DUPLICATI ---
   const weekIdsToCheck = payload.weeks.map(w => w.camp_week_id);
   const { data: existingDuplicates, error: checkError } = await supabase
@@ -56,7 +68,6 @@ export async function createEnrollment(payload: EnrollmentPayload) {
     pre_post: w.pre_post
   }));
 
-  // Chiamata alla nuova funzione SQL che calcola il totale COMBINATO (Old + New) e ritorna il delta
   const { data: dbQuote, error: rpcError } = await supabase.rpc('calculate_enrollment_price', {
     p_camp_id: payload.campId,
     p_child_id: payload.childId,
@@ -68,21 +79,26 @@ export async function createEnrollment(payload: EnrollmentPayload) {
     return { error: "Errore nel calcolo del prezzo server." };
   }
 
-  // B. Gestione Sconto Codice (ENV) - applicato al totale CUMULATIVO
+  // B. Gestione Sconto Codice (ENV) - Dinamico per Campo
   let calculatedPromoDiscount = 0;
   
   if (payload.appliedPromo) {
-    const promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI || "0.20");
-    // Lo sconto codice si applica sulla 'tuition' totale (Old + New)
+    let promoPercent = 0;
+    
+    // Sceglie la percentuale in base al nome del campo
+    if (campNameLower.includes('cantù')) {
+        promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI_CANTU || "0.20");
+    } else if (campNameLower.includes('mulini')) {
+        promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI_MULINI || "0.20");
+    }
+
     calculatedPromoDiscount = Number(dbQuote.tuition) * promoPercent;
   }
 
   // C. Costruzione Totale Server
-  // Totale Cumulativo (Old + New) al netto degli sconti (fratelli e promo)
-  const dbGrandTotal = Number(dbQuote.grand_total_value); // Include sconto fratelli
+  const dbGrandTotal = Number(dbQuote.grand_total_value); 
   const serverGrandTotal = Math.max(0, dbGrandTotal - calculatedPromoDiscount);
   
-  // Sottraiamo ciò che è già stato fatturato (che includeva eventuali sconti precedenti)
   const alreadyBilled = Number(dbQuote.already_billed);
   const serverDeltaToPay = Math.max(0, serverGrandTotal - alreadyBilled);
 
@@ -98,7 +114,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
       camp_id: payload.campId,
       child_id: payload.childId,
       stato: 'CONFIRMED',
-      prezzo_totale: serverDeltaToPay, // Salviamo il DELTA
+      prezzo_totale: serverDeltaToPay,
       pagato: 0,
       price_snapshot: {
         ...payload.priceSnapshot,
@@ -115,8 +131,6 @@ export async function createEnrollment(payload: EnrollmentPayload) {
 
   // --- 4. INSERIMENTO DETTAGLI SETTIMANE ---
   const weeksData = payload.weeks.map(w => {
-    // Il dettaglio prezzo singolo è tricky col delta.
-    // Salviamo il prezzo "di listino" calcolato per quella settimana nel contesto attuale.
     const serverDetail = dbQuote.details.find((d: any) => d.week_id === w.camp_week_id);
     const basePrice = serverDetail ? Number(serverDetail.price) : w.price;
     const extraPrice = serverDetail ? Number(serverDetail.extraPrice) : 0; 
@@ -140,13 +154,13 @@ export async function createEnrollment(payload: EnrollmentPayload) {
 
   // --- 5. EMAIL ---
   try {
-    const [profileRes, childRes, campRes] = await Promise.all([
+    // Rimosso campRes, facciamo solo 2 query invece di 3
+    const [profileRes, childRes] = await Promise.all([
       supabase.from('profiles').select('email, nome').eq('id', user.id).single(),
-      supabase.from('children').select('nome, cognome, cf').eq('id', payload.childId).single(),
-      supabase.from('camps').select('nome').eq('id', payload.campId).single()
+      supabase.from('children').select('nome, cognome, cf').eq('id', payload.childId).single()
     ]);
 
-    if (profileRes.data && childRes.data && campRes.data) {
+    if (profileRes.data && childRes.data) {
       await resend.emails.send({
         from: 'SportEssence <noreply@sportessence.it>', 
         to: [profileRes.data.email],
@@ -155,7 +169,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
           parentName: profileRes.data.nome,
           childName: `${childRes.data.nome} ${childRes.data.cognome}`,
           childCF: childRes.data.cf,
-          campName: campRes.data.nome,
+          campName: campName, // Usiamo il nome recuperato allo step 0
           amount: serverDeltaToPay,
           iban: BANK_INFO.iban,
           reservationId: enrollment.id

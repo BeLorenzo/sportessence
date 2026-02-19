@@ -95,8 +95,13 @@ function IscrizioneContent() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const FEDELI_CODICE = process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE || "FEDELI2025";
-  const FEDELI_VALORE = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI || "0.20");
+  const currentCampObj = camps.find(c => c.id === selectedCamp);
+  const isCastelloCamp = currentCampObj?.nome.toLowerCase().includes("castello");
+  const isMuliniCamp = currentCampObj?.nome.toLowerCase().includes("uggiate");
+
+const currentPromoCode = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_MULINI : "";
+const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_MULINI : 0;
+
 
   useEffect(() => {
     const initData = async () => {
@@ -221,14 +226,14 @@ function IscrizioneContent() {
   };
 
   const applyPromoCode = () => {
-    console.log("Input:", promoCode.trim().toUpperCase(), "Target:", FEDELI_CODICE.toUpperCase());
-    if (promoCode.trim().toUpperCase() === FEDELI_CODICE.toUpperCase()) {
-      setIsPromoApplied(true);
-      setPromoError("");
-    } else {
-      setIsPromoApplied(false);
-      setPromoError("Codice non valido");
-    }
+    if (!currentPromoCode) return;
+    if (promoCode.trim().toUpperCase() === currentPromoCode.toUpperCase()) {
+    setIsPromoApplied(true);
+    setPromoError("");
+  } else {
+    setIsPromoApplied(false);
+    setPromoError("Codice non valido");
+  }
   };
 
   const isWeekBooked = (wid: string) => bookedWeekIds.includes(wid);
@@ -311,9 +316,16 @@ function IscrizioneContent() {
                   }
 
                   // CASO C: Sconto % Fratelli (Accumulato)
-                  if (hasOverlap && campObj.sibling_discount_value > 0 && campObj.sibling_discount_value <= 1) {
-                      grandSiblingDiscount += price * campObj.sibling_discount_value;
-                      discountReason = discountReason ? `${discountReason} + Fratello` : "Sconto Fratello";
+                  if (hasOverlap) {
+                      if (campObj.sibling_discount_value > 0 && campObj.sibling_discount_value <= 1) {
+                          // Sconto Percentuale (es. 0.10 = 10% a settimana)
+                          grandSiblingDiscount += price * campObj.sibling_discount_value;
+                          discountReason = discountReason ? `${discountReason} + Fratello` : "Sconto Fratello";
+                      } else if (campObj.sibling_discount_value > 1) {
+                          // Sconto Assoluto (es. 20€ a settimana)
+                          grandSiblingDiscount += Number(campObj.sibling_discount_value);
+                          discountReason = discountReason ? `${discountReason} + Fratello` : "Sconto Fratello";
+                      }
                   }
               }
           }
@@ -335,16 +347,10 @@ function IscrizioneContent() {
           };
       });
 
-      // Sconto Fratello Assoluto
-      if (campObj.sibling_discount_value > 1) {
-          const hasAnyOverlap = allWeeks.some(w => siblingWeekIds.has(w.week_id));
-          if (hasAnyOverlap) grandSiblingDiscount = campObj.sibling_discount_value;
-      }
-
       // Sconto Promo
       let grandPromoDiscount = 0;
       if (isPromoApplied) {
-          grandPromoDiscount = grandTuition * FEDELI_VALORE;
+       grandPromoDiscount = grandTuition * Number(currentPromoValue); 
       }
 
       const grandTotal = Math.max(0, grandTuition + grandExtras - grandSiblingDiscount - grandPromoDiscount);
@@ -365,7 +371,7 @@ function IscrizioneContent() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [selectedCamp, selectedChild, weekSelections, bookedWeeks, alreadyBilledAmount, isPromoApplied, camps, siblingWeekIds, FEDELI_VALORE]);
+  }, [selectedCamp, selectedChild, weekSelections, bookedWeeks, alreadyBilledAmount, isPromoApplied, camps, siblingWeekIds, currentPromoValue]);
 
   // Invio Dati
   const handleSubmit = async (e: React.FormEvent) => {
@@ -394,9 +400,6 @@ function IscrizioneContent() {
     if (result.error) { setErrorMsg(result.error); setSubmitting(false); } 
     else { router.push('/Utente?success=enrollment_created'); }
   };
-
-  const currentCampObj = camps.find(c => c.id === selectedCamp);
-  const isCastelloCamp = currentCampObj?.nome.includes("Castello Città di Cantù");
 
   const formatDateRange = (start: string, end: string) => {
     const s = new Date(start).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit' });
@@ -560,7 +563,7 @@ function IscrizioneContent() {
 
                 <div className="border-t border-dashed border-gray-200"></div>
 
-                {isCastelloCamp && (
+                {(isCastelloCamp || isMuliniCamp) && (
                     <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
                         <label className="text-xs font-bold text-purple-900 mb-1 flex items-center gap-1"><Tag size={12}/> Codice Sconto Fedeltà</label>
                         <div className="flex gap-2">
