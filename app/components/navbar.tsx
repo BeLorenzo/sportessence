@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Menu, X, LogOut, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import logo from "@/public/imgs/logo.png";
@@ -20,7 +20,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   
   const dropdownRef = useRef<HTMLDivElement>(null);
 

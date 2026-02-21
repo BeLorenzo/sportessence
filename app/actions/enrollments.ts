@@ -88,7 +88,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
     // Sceglie la percentuale in base al nome del campo
     if (campNameLower.includes('cantù')) {
         promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI_CANTU || "0.20");
-    } else if (campNameLower.includes('mulini')) {
+    } else if (campNameLower.includes('uggiate')) {
         promoPercent = parseFloat(process.env.NEXT_PUBLIC_SCONTO_FEDELI_MULINI || "0.20");
     }
 

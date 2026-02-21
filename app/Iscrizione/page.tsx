@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { createClient } from "@/app/utils/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { 
@@ -62,7 +62,8 @@ type ExistingBooking = {
 function IscrizioneContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
+
 
   const [children, setChildren] = useState<Child[]>([]);
   const [camps, setCamps] = useState<Camp[]>([]);
