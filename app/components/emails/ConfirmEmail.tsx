@@ -57,7 +57,7 @@ export const ConfirmEmail: React.FC<EmailProps> = ({
             </tr>
             <tr>
               <td style={{ padding: '8px 0', color: '#78350f', fontSize: '14px' }}>Intestatario:</td>
-              <td style={{ padding: '8px 0', fontWeight: 'bold' }}>SportEssence ASD</td>
+              <td style={{ padding: '8px 0', fontWeight: 'bold' }}>Sport Essence</td>
             </tr>
             <tr>
               <td style={{ padding: '8px 0', color: '#78350f', fontSize: '14px', verticalAlign: 'top' }}>Causale:</td>
