@@ -8,18 +8,6 @@ export const revalidate = 0;
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
   
-  // 1. Auth & Admin Check
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) redirect('/Login');
-
-  const { data: adminCheck } = await supabase
-    .from('admins_whitelist')
-    .select('id')
-    .eq('id', user.id)
-    .single();
-
-  if (!adminCheck) redirect('/');
-
    // A. Campi (Verifica che 'membership_type' esista nel DB!)
   const { data: camps, error: campError } = await supabase
     .from('camps')

@@ -55,29 +55,12 @@ export default function Navbar({ initialRole }: NavbarProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  // Auth check
+  // Auth check ottimizzato
   useEffect(() => {
-    const fetchRoleOnLogin = async () => {
-      router.refresh();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setRole("guest");
-        return;
-      }
-      const { data: adminRow } = await supabase
-        .from('admins_whitelist')
-        .select('id')
-        .eq('id', user.id)
-        .maybeSingle();
-      setRole(adminRow ? "admin" : "user");
-    };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setRole("guest");
-        router.refresh();
-      } else if (event === 'SIGNED_IN') {
-        fetchRoleOnLogin();
+      // Reagiamo solo ai veri cambi di stato, ignoriamo i refresh del token o l'inizializzazione silenziosa
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        router.refresh(); // Questo basta! Il server (RootLayout) ricalcola initialRole e aggiorna la prop.
       }
     });
 
@@ -169,6 +152,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
                   {isProjectsOpen && (
                     <div className="absolute top-full left-0 mt-2 w-64 bg-blue-light rounded-lg shadow-2xl py-2 z-50 border border-white">
                       <Link
+                      prefetch={false}
                         href="/LezioniIndividuali"
                         className={`block px-4 py-3 text-sm text-white hover:underline hover:font-semibold transition-all ${
                           pathname === "/LezioniIndividuali" ? "text-white font-bold underline" : ""
@@ -177,6 +161,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
                         Lezioni Individuali
                       </Link>
                       <Link
+                      prefetch={false}
                         href="/Psicomotricita"
                         className={`block px-4 py-3 text-sm text-white hover:underline hover:font-semibold transition-all ${
                           pathname === "/Psicomotricita" ? "text-white font-bold underline" : ""
@@ -194,6 +179,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
               <Link
                 key={link.name}
                 href={link.href}
+                prefetch={false}
                 className={`transition hover:underline hover:font-semibold hover:scale-105 text-white whitespace-nowrap ${
                   pathname?.toLowerCase() === link.href.toLowerCase()
                     ? "underline underline-offset-4 decoration-2 font-bold scale-105"
@@ -261,6 +247,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
                     <div className="ml-4 mt-1 space-y-3 pl-2 border-l border-white/30">
                       <Link
                         href="/LezioniIndividuali"
+                        prefetch={false}
                         className={`block text-sm transition-transform duration-200 hover:scale-105 text-white ${
                           pathname === "/LezioniIndividuali" ? "font-bold underline" : ""
                         }`}
@@ -269,6 +256,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
                       </Link>
                       <Link
                         href="/Psicomotricita"
+                        prefetch={false}
                         className={`block text-sm transition-transform duration-200 hover:scale-105 text-white ${
                           pathname === "/Psicomotricita" ? "font-bold underline" : ""
                         }`}
@@ -286,6 +274,7 @@ export default function Navbar({ initialRole }: NavbarProps) {
               <Link
                 key={link.name}
                 href={link.href}
+                prefetch={false}
                 className={`block py-1 transition-transform duration-200 hover:scale-105 hover:underline hover:font-semibold text-white ${
                   isActive ? "font-bold underline underline-offset-4 decoration-2" : ""
                 }`}
