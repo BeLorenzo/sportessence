@@ -133,14 +133,14 @@ export default function DeleteConfirmModal({
           {/* --- TURNSTILE INVISIBILE --- */}
           {/* Lo mettiamo hidden così non cambia l'estetica, ma lavora in background */}
           {authMethod === 'password' && (
-             <div className="hidden">
+             <div className="flex justify-center my-4">
                 <Turnstile 
-                    ref={turnstileRef}
-                    siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
-                    onSuccess={(token) => setCaptchaToken(token)}
-                    onError={() => setError("Errore connessione Captcha")}
-                    onExpire={() => setCaptchaToken(null)}
-                    options={{ size: 'invisible' }} // Modalità invisibile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onError={() => setError("Errore di connessione al sistema di sicurezza.")}
+                  onExpire={() => setCaptchaToken(null)}
+                  options={{ theme: 'light' }} 
                 />
              </div>
           )}

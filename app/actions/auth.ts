@@ -23,53 +23,47 @@ export async function signup(formData: any) {
     recaptchaToken
   } = formData
 
-  // ✅ NUOVO: Crea utente SENZA auto-conferma
-  // L'utente dovrà inserire il codice OTP per confermare
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      // ⚠️ NON usiamo emailRedirectTo perché non vogliamo link!
-      // Supabase invierà automaticamente un OTP alla email
-      emailRedirectTo: undefined,
-      captchaToken: recaptchaToken
+      captchaToken: recaptchaToken,
+      data: { // I dati vengono salvati nei metadati di sistema di Supabase
+        nome: nome,
+        cognome: cognome,
+        cf: codiceFiscale,
+        telefono: telefono,
+        email_contatti: emailContatto || email,
+        indirizzo_via: via,
+        indirizzo_civico: civico,
+        indirizzo_paese: paese,
+        indirizzo_provincia: provincia,
+        indirizzo_cap: cap,
+      }
     }
   })
 
   if (authError) {
+    if (authError.message.includes("User already registered") || authError.status === 422) {
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      })
+      if (resendError) {
+        return { error: "Errore nell'invio del nuovo codice OTP. Riprova più tardi." }
+      }
+      return { success: true, needsVerification: true, email: email }
+    }
     return { error: authError.message }
   }
 
-  if (!authData.user) {
-    return { error: "Errore sconosciuto durante la creazione utente." }
-  }
-
-  // Crea profilo (sarà accessibile solo dopo conferma OTP)
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
-      id: authData.user.id,
-      email: email,
-      nome: nome,
-      cognome: cognome,
-      cf: codiceFiscale,
-      telefono: telefono,
-      email_contatti: emailContatto || email,
-      indirizzo_via: via,
-      indirizzo_civico: civico,
-      indirizzo_paese: paese,
-      indirizzo_provincia: provincia,
-      indirizzo_cap: cap,
-    })
-
-  if (profileError) {
-    console.error("Errore salvataggio profilo:", profileError)
-    return { error: "Registrazione riuscita ma errore nel profilo: " + profileError.message }
+  if (authData.user && authData.user.identities && authData.user.identities.length === 0) {
+    return { error: "Questa email è già registrata e attiva. Fai il login." }
   }
 
   return { 
     success: true,
-    needsVerification: true, // Indica che serve verifica OTP
+    needsVerification: true, 
     email: email
   }
 }
@@ -88,7 +82,7 @@ export async function verifySignupOTP(formData: FormData) {
   const { data, error } = await supabase.auth.verifyOtp({
     email,
     token,
-    type: 'signup' // ⚠️ IMPORTANTE: tipo 'signup' per conferma registrazione
+    type: 'signup'
   })
 
   if (error) {
@@ -97,6 +91,33 @@ export async function verifySignupOTP(formData: FormData) {
 
   if (!data.user) {
     return { error: "Errore durante la verifica" }
+  }
+
+  // ORA CHE È VERIFICATO, RECUPERIAMO I METADATI E CREIAMO IL PROFILO
+  const meta = data.user.user_metadata
+
+  // Usiamo upsert invece di insert. Se per caso clicca due volte o cade la rete, non va in errore
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .upsert({
+      id: data.user.id,
+      email: email,
+      nome: meta.nome,
+      cognome: meta.cognome,
+      cf: meta.cf,
+      telefono: meta.telefono,
+      email_contatti: meta.email_contatti,
+      indirizzo_via: meta.indirizzo_via,
+      indirizzo_civico: meta.indirizzo_civico,
+      indirizzo_paese: meta.indirizzo_paese,
+      indirizzo_provincia: meta.indirizzo_provincia,
+      indirizzo_cap: meta.indirizzo_cap,
+    })
+
+  if (profileError) {
+    console.error("Errore salvataggio profilo:", profileError)
+    // Se fallisce qui è un problema di backend, ma l'utente su Supabase auth è ormai attivo
+    return { error: "Verifica riuscita ma errore nel salvataggio dei dati profilo." }
   }
 
   return { success: true }
