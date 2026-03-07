@@ -97,9 +97,14 @@ export async function createEnrollment(payload: EnrollmentPayload) {
 
   // C. Costruzione Totale Server
   const dbGrandTotal = Number(dbQuote.grand_total_value); 
-  const serverGrandTotal = Math.max(0, dbGrandTotal - calculatedPromoDiscount);
-  
   const alreadyBilled = Number(dbQuote.already_billed);
+
+  // Applica la quota di 15€ anche sul server se è una nuova iscrizione
+  const registrationFee = alreadyBilled === 0 ? 15 : 0;
+
+  // Aggiungi la quota al calcolo finale
+  const serverGrandTotal = Math.max(0, dbGrandTotal - calculatedPromoDiscount) + registrationFee;
+  
   const serverDeltaToPay = Math.max(0, serverGrandTotal - alreadyBilled);
 
   // D. Check di sicurezza

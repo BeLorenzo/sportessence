@@ -49,6 +49,7 @@ type LocalQuote = {
   extras: number;
   discountSibling: number;
   discountPromo: number;
+  registrationFee: number;
   total: number;
   details: QuoteDetail[];
 };
@@ -354,7 +355,9 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
        grandPromoDiscount = grandTuition * Number(currentPromoValue); 
       }
 
-      const grandTotal = Math.max(0, grandTuition + grandExtras - grandSiblingDiscount - grandPromoDiscount);
+      const registrationFee = alreadyBilledAmount === 0 ? 15 : 0;
+
+      const grandTotal = Math.max(0, grandTuition + grandExtras - grandSiblingDiscount - grandPromoDiscount) + registrationFee;
       const toPayNow = Math.max(0, grandTotal - alreadyBilledAmount);
 
       const newWeeksDisplay = allCalculatedDetails.filter(d => d.is_new);
@@ -364,6 +367,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
         extras: grandExtras,
         discountSibling: grandSiblingDiscount,
         discountPromo: grandPromoDiscount,
+        registrationFee: registrationFee,
         total: toPayNow,
         details: newWeeksDisplay as QuoteDetail[] 
       });
@@ -579,6 +583,12 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-gray-600 text-sm font-medium"><span>Totale Settimane (Cumulativo)</span><span>€{priceQuote.tuition.toFixed(2)}</span></div>
                   <div className="flex justify-between items-center text-gray-600 text-sm font-medium"><span>Extra (Pre/Post)</span><span>€{priceQuote.extras.toFixed(2)}</span></div>
+                  {priceQuote.registrationFee > 0 && (
+                    <div className="flex justify-between items-center text-gray-800 text-sm font-bold">
+                      <span>Quota Iscrizione</span>
+                      <span>+ €{priceQuote.registrationFee.toFixed(2)}</span>
+                    </div>
+                  )}
                   {priceQuote.discountSibling > 0 && <div className="flex justify-between items-center text-green-600 text-sm font-bold"><span>Sconto Fratelli</span><span>- €{priceQuote.discountSibling.toFixed(2)}</span></div>}
                   {priceQuote.discountPromo > 0 && <div className="flex justify-between items-center text-purple-600 text-sm font-bold"><span>Sconto Codice</span><span>- €{priceQuote.discountPromo.toFixed(2)}</span></div>}
                   {alreadyBilledAmount > 0 && <div className="flex justify-between items-center text-cyan-700 text-sm font-medium"><span>Già Fatturato</span><span>- €{alreadyBilledAmount.toFixed(2)}</span></div>}
@@ -588,11 +598,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                     <div className="text-white"><p className="text-xs uppercase tracking-wider opacity-80 mb-0.5">Da Saldare Ora</p><p className="text-xs opacity-70">(Bonifico)</p></div>
                     <span className="text-3xl font-extrabold text-white">€{priceQuote.total.toFixed(2)}</span>
                   </div>
-                  
-                  <div className="bg-amber-50 text-amber-900 p-3 rounded-xl text-xs flex gap-2 border border-amber-200">
-                    <Info size={16} className="shrink-0 mt-0.5 text-amber-600"/>
-                    <div><strong>Attenzione:</strong> Il prezzo non include la quota di iscrizione/acconto di <strong>€15</strong>, da versare prima del saldo per confermare l'iscrizione.</div>
-                  </div>
+                
 
                   {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs flex gap-2 border border-red-100"><AlertTriangle size={14}/> {errorMsg}</div>}
 
