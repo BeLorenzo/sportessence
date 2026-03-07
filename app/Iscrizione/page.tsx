@@ -150,6 +150,9 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
           return; 
       }
 
+      const currentYear = new Date().getFullYear();
+      const startOfYear = `${currentYear}-01-01T00:00:00.000Z`;
+
       // A. MIEI DATI
       const { data: myEnrollments } = await supabase.from('enrollments')
         .select(`
@@ -158,7 +161,8 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
         `)
         .eq('child_id', selectedChild)
         .eq('camp_id', selectedCamp)
-        .in('stato', ['CONFIRMED', 'COMPLETED', 'PENDING', 'saldato', 'acconto']);
+        .in('stato', ['CONFIRMED', 'COMPLETED', 'PENDING', 'saldato', 'acconto'])
+        .gte('created_at', startOfYear);;
       
       let pastWeeks: ExistingBooking[] = [];
       let pastTotal = 0;
@@ -189,10 +193,11 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
       if (!user) return;
 
       const { data: siblingsData } = await supabase.from('enrollment_weeks')
-        .select('camp_week_id, child_id, enrollments!inner(camp_id, stato)')
+        .select('camp_week_id, child_id, enrollments!inner(camp_id, stato, created_at)')
         .neq('child_id', selectedChild)
         .eq('enrollments.camp_id', selectedCamp)
-        .in('enrollments.stato', ['CONFIRMED', 'COMPLETED', 'PENDING', 'saldato', 'acconto']);
+        .in('enrollments.stato', ['CONFIRMED', 'COMPLETED', 'PENDING', 'saldato', 'acconto'])
+        .gte('enrollments.created_at', startOfYear);
 
       const siblingSet = new Set<string>();
       siblingsData?.forEach((row: any) => siblingSet.add(row.camp_week_id));
@@ -355,7 +360,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
        grandPromoDiscount = grandTuition * Number(currentPromoValue); 
       }
 
-      const registrationFee = alreadyBilledAmount === 0 ? 15 : 0;
+      const registrationFee = 15;
 
       const grandTotal = Math.max(0, grandTuition + grandExtras - grandSiblingDiscount - grandPromoDiscount) + registrationFee;
       const toPayNow = Math.max(0, grandTotal - alreadyBilledAmount);
@@ -583,12 +588,10 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-gray-600 text-sm font-medium"><span>Totale Settimane (Cumulativo)</span><span>€{priceQuote.tuition.toFixed(2)}</span></div>
                   <div className="flex justify-between items-center text-gray-600 text-sm font-medium"><span>Extra (Pre/Post)</span><span>€{priceQuote.extras.toFixed(2)}</span></div>
-                  {priceQuote.registrationFee > 0 && (
                     <div className="flex justify-between items-center text-gray-800 text-sm font-bold">
                       <span>Quota Iscrizione</span>
                       <span>+ €{priceQuote.registrationFee.toFixed(2)}</span>
                     </div>
-                  )}
                   {priceQuote.discountSibling > 0 && <div className="flex justify-between items-center text-green-600 text-sm font-bold"><span>Sconto Fratelli</span><span>- €{priceQuote.discountSibling.toFixed(2)}</span></div>}
                   {priceQuote.discountPromo > 0 && <div className="flex justify-between items-center text-purple-600 text-sm font-bold"><span>Sconto Codice</span><span>- €{priceQuote.discountPromo.toFixed(2)}</span></div>}
                   {alreadyBilledAmount > 0 && <div className="flex justify-between items-center text-cyan-700 text-sm font-medium"><span>Già Fatturato</span><span>- €{alreadyBilledAmount.toFixed(2)}</span></div>}

@@ -100,7 +100,7 @@ export async function createEnrollment(payload: EnrollmentPayload) {
   const alreadyBilled = Number(dbQuote.already_billed);
 
   // Applica la quota di 15€ anche sul server se è una nuova iscrizione
-  const registrationFee = alreadyBilled === 0 ? 15 : 0;
+  const registrationFee = 15;
 
   // Aggiungi la quota al calcolo finale
   const serverGrandTotal = Math.max(0, dbGrandTotal - calculatedPromoDiscount) + registrationFee;
