@@ -12,7 +12,8 @@ export default async function CampiPage() {
   const campImagesMap: Record<string, string> = {
     "Cadorago Summer Camp": "/imgs/locandine/Cadorago/cadoragoLocandina1.png",
     "Castello Città di Cantù Summer Camp": "/imgs/locandine/Cantu/castelloLocandina1.png",
-    "Uggiate con Ronago Summer Camp": "/imgs/locandine/Uggiate/muliniLocandina1.png" 
+    "Uggiate con Ronago Summer Camp": "/imgs/locandine/Uggiate/muliniLocandina1.png",
+    "Capiago Intimiano Summer Camp": "/imgs/locandine/Capiago/capiagoLocandina1.png", 
   };
 
   const campGalleriesMap: Record<string, string[]> = {
@@ -36,6 +37,12 @@ export default async function CampiPage() {
         "/imgs/locandine/Uggiate/muliniLocandina4.png",
         "/imgs/locandine/Uggiate/muliniLocandina5.png",
         "/imgs/locandine/Uggiate/muliniLocandina6.png",
+    ],
+    "Capiago Intimiano Summer Camp": [
+      "/imgs/locandine/Capiago/capiagoLocandina1.png",
+      "/imgs/locandine/Capiago/capiagoLocandina2.png",
+      "/imgs/locandine/Capiago/capiagoLocandina3.png",
+      "/imgs/locandine/Capiago/capiagoLocandina4.png",
     ]
   };
 
