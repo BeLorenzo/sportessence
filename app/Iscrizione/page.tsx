@@ -10,7 +10,7 @@ import {
 import { createEnrollment } from "@/app/actions/enrollments";
 
 // --- TIPI ---
-type Child = { id: string; nome: string; cognome: string };
+type Child = { id: string; nome: string; cognome: string; data_nascita?: string };
 type CampWeek = { id: string; label: string; data_inizio: string; data_fine: string };
 type PricingTier = { price_per_week: number; min_weeks: number; discount_percent: number };
 
@@ -97,6 +97,22 @@ function IscrizioneContent() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const availableCamps = useMemo(() => {
+    if (!selectedChild) return camps; 
+
+    const childObj = children.find(c => c.id === selectedChild);
+    if (!childObj || !childObj.data_nascita) return camps;
+
+    const birthYear = new Date(childObj.data_nascita).getFullYear();
+
+    return camps.filter(camp => {
+      if (camp.nome.toLowerCase().includes("capiago intimiano baby camp")) {
+        return birthYear >= 2021 && birthYear <= 2023;
+      }
+      return true;
+    });
+  }, [camps, selectedChild, children]);
+
   const currentCampObj = camps.find(c => c.id === selectedCamp);
   const isCastelloCamp = currentCampObj?.nome.toLowerCase().includes("castello");
   const isMuliniCamp = currentCampObj?.nome.toLowerCase().includes("uggiate");
@@ -110,7 +126,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push("/Login?redirect=/Iscrizione"); return; }
 
-      const { data: childrenData } = await supabase.from('children').select('id, nome, cognome').eq('parent_id', user.id);
+      const { data: childrenData } = await supabase.from('children').select('id, nome, cognome, data_nascita').eq('parent_id', user.id);
       setChildren(childrenData || []);
 
       const { data: campsData } = await supabase
@@ -206,6 +222,15 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
 
     fetchHistory();
   }, [selectedChild, selectedCamp, supabase]);
+
+  useEffect(() => {
+    if (selectedCamp && selectedChild) {
+      const isValid = availableCamps.some(c => c.id === selectedCamp);
+      if (!isValid) {
+        handleCampChange(""); // Resetta istantaneamente se il campo non è più valido per l'età
+      }
+    }
+  }, [selectedChild, availableCamps, selectedCamp]);
 
   const handleCampChange = (campId: string, campsList: Camp[] = camps) => {
     setSelectedCamp(campId);
@@ -460,7 +485,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                   <label className="block text-sm font-bold text-gray-700 mb-2">Campo Estivo</label>
                   <select className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-600 appearance-none bg-white text-gray-900" value={selectedCamp} onChange={e => handleCampChange(e.target.value)}>
                     <option value="">-- Seleziona --</option>
-                    {camps.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.indirizzo_paese})</option>)}
+                    {availableCamps.map(c => <option key={c.id} value={c.id}>{c.nome} ({c.indirizzo_paese})</option>)}
                   </select>
                   <MapPin className="absolute left-3 top-[2.6rem] text-gray-400" size={18} />
                 </div>
