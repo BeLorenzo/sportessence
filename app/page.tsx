@@ -297,15 +297,15 @@ export default function Home() {
             <ul className="text-gray-700 mb-6 space-y-3 flex-grow">
               <li className="flex items-start gap-2">
                 <span className="text-cyan-600 font-bold">•</span>
-                <span><strong>Età minima?</strong> Dai 6 ai 21 anni</span>
+                <span><strong>Età minima?</strong> Dai 3 ai 18 anni</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-cyan-600 font-bold">•</span>
-                <span><strong>Serve certificato medico?</strong> Sì, obbligatorio</span>
+                <span><strong>C'èè possibilità di pranzo in loco?</strong> Sì, l'accesso al pranzo è acquistabile e preparato da una mensa convenzionata</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-cyan-600 font-bold">•</span>
-                <span><strong>Sconti per fratelli?</strong> Sì, dal 10% al 15%</span>
+                <span><strong>Sconti per fratelli?</strong> Sì, sono previsti sconti per fratelli iscritti alle stesse settimane</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-cyan-600 font-bold">•</span>

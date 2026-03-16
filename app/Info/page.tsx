@@ -31,8 +31,8 @@ export default function InfoUtili() {
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
                   I nostri campi estivi si svolgono da giugno a settembre. 
-                  L'orario standard è dalle 8:00 alle 17:00, con possibilità di pre-accoglienza 
-                  dalle 7:30 e post-accoglienza fino alle 18:00.
+                  L'orario standard è dalle 8:30 alle 16:30, con possibilità di pre-accoglienza 
+                  dalle 7:30 e post-accoglienza fino alle 17:30.
                 </p>
               </div>
 
