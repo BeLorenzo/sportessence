@@ -139,9 +139,9 @@ export default function InfoUtili() {
                   Come funziona il pagamento?
                 </h3>
                 <p className="text-gray-700 leading-relaxed">
-                  Dopo aver completato l'iscrizione online, riceverai le istruzioni per il 
-                  pagamento via bonifico bancario. È richiesto un acconto di 15€ al momento 
-                  dell'iscrizione in modo da confermarla. Il saldo va versato entro 15 giorni prima dell'inizio del campo.
+                  Dopo aver completato l'iscrizione online, riceverai le istruzioni per il pagamento via bonifico bancario. 
+                  È richiesto un acconto di 15€ al momento dell'iscrizione per confermarla. Il saldo può essere versato liberamente 
+                  anche in più soluzioni, purché sia interamente saldato entro il venerdì della settimana precedente all'inizio del campo.
                 </p>
               </div>
 
