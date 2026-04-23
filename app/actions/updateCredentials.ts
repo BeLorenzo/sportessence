@@ -3,16 +3,16 @@
 import { createClient } from '../utils/supabase/server'
 
 // ==========================================
-// 1. CAMBIO EMAIL (Step 1: Richiesta OTP)
+// 1. CAMBIO EMAIL (Step 1: Richiesta OTP con Password)
 // ==========================================
-export async function requestEmailChangeOTP(newEmail: string) {
+export async function requestEmailChangeOTP(newEmail: string, currentPassword: string, captchaToken: string) {
   const supabase = await createClient()
   
   // 1. Check Auth
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { error: 'Non autenticato' }
 
-  // 2. Validazioni Input (Dal tuo codice robusto)
+  // 2. Validazioni Input
   const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
   if (!emailRegex.test(newEmail)) return { error: 'Email non valida' }
   
@@ -20,15 +20,31 @@ export async function requestEmailChangeOTP(newEmail: string) {
     return { error: 'La nuova email è uguale a quella attuale' }
   }
 
-  // 3. Invia richiesta a Supabase
-  // Invia OTP alla NUOVA email
+  // 3. BLOCCO DI SICUREZZA: Verifica Password + Turnstile
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: user.email!,
+    password: currentPassword,
+    options: {
+      captchaToken: captchaToken
+    }
+  })
+
+  if (signInError) {
+    console.error("Errore verifica password per cambio email:", signInError.message);
+    if (signInError.message.toLowerCase().includes("captcha")) {
+      return { error: 'Verifica di sicurezza fallita. Riprova.' }
+    }
+    return { error: 'La password attuale non è corretta' }
+  }
+
+  // 4. Invia richiesta OTP alla NUOVA email
   const { error } = await supabase.auth.updateUser(
     { email: newEmail },
-    { emailRedirectTo: undefined } // Forza OTP, niente link magici
+    { emailRedirectTo: undefined } 
   )
 
   if (error) {
-    if (error.message.includes('already registered')) return { error: 'Email già in uso' }
+    if (error.message.includes('already registered')) return { error: 'Email già in uso da un altro utente' }
     return { error: error.message }
   }
 
@@ -41,14 +57,11 @@ export async function requestEmailChangeOTP(newEmail: string) {
 export async function verifyEmailChangeOTP(newEmail: string, token: string) {
   const supabase = await createClient()
   
-  // 1. Check Auth
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { error: 'Non autenticato' }
 
   if (!token || token.length < 6) return { error: 'Codice non valido' }
 
-  // 2. Verifica OTP su Supabase
-  // Per il cambio email, serve passare la NUOVA email e il type 'email_change'
   const { error: verifyError } = await supabase.auth.verifyOtp({
     email: newEmail,
     token: token,
@@ -57,8 +70,7 @@ export async function verifyEmailChangeOTP(newEmail: string, token: string) {
 
   if (verifyError) return { error: 'Codice errato o scaduto' }
 
-  // 3. CRUCIALE: Aggiorna anche la tabella pubblica 'profiles'
-  // Se non lo fai, l'utente avrà email diverse tra Auth e Database
+  // Sincronizza il profilo
   const { error: profileError } = await supabase
     .from('profiles')
     .update({ email: newEmail })
@@ -66,7 +78,6 @@ export async function verifyEmailChangeOTP(newEmail: string, token: string) {
 
   if (profileError) {
     console.error('Errore sync profilo:', profileError)
-    // Non ritorniamo errore all'utente perché l'auth è comunque cambiata con successo
   }
 
   return { success: true }
@@ -75,28 +86,38 @@ export async function verifyEmailChangeOTP(newEmail: string, token: string) {
 // ==========================================
 // 3. CAMBIO PASSWORD (Sicuro)
 // ==========================================
-export async function changePassword(currentPassword: string, newPassword: string) {
+export async function changePassword(currentPassword: string, newPassword: string, captchaToken: string) {
   const supabase = await createClient()
   
   // 1. Check Auth
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) return { error: 'Non autenticato' }
 
-  // 2. Validazioni Sicurezza Password (Dal tuo codice robusto)
+  // 2. Validazioni Sicurezza Password
   if (newPassword.length < 8) return { error: 'Minimo 8 caratteri' }
   if (!/[A-Z]/.test(newPassword)) return { error: 'Serve una maiuscola' }
   if (!/[a-z]/.test(newPassword)) return { error: 'Serve una minuscola' }
   if (!/[0-9]/.test(newPassword)) return { error: 'Serve un numero' }
   if (!/[^A-Za-z0-9]/.test(newPassword)) return { error: 'Serve un carattere speciale' }
 
-  // 3. Verifica che l'utente conosca la vecchia password
-  // È una best practice di sicurezza per evitare cambi password se lasci il PC aperto
+  // 3. Verifica della vecchia password CON Turnstile
   const { error: signInError } = await supabase.auth.signInWithPassword({
     email: user.email!,
-    password: currentPassword
+    password: currentPassword,
+    options: {
+      captchaToken: captchaToken // <-- Il parametro vitale
+    }
   })
 
-  if (signInError) return { error: 'La password attuale non è corretta' }
+  if (signInError) {
+    console.error("Errore di verifica vecchia password:", signInError.message);
+    
+    // Distinguiamo l'errore del captcha dall'errore della password
+    if (signInError.message.toLowerCase().includes("captcha")) {
+      return { error: 'Verifica di sicurezza fallita. Riprova.' }
+    }
+    return { error: 'La password attuale non è corretta' }
+  }
 
   // 4. Aggiorna Password
   const { error: updateError } = await supabase.auth.updateUser({

@@ -176,21 +176,31 @@ export async function login(formData: FormData) {
 // --- RESET PASSWORD: Step 1 - Richiedi OTP ---
 export async function forgotPassword(formData: FormData) {
   const supabase = await createClient()
+  
   const email = formData.get("email") as string
+  const recaptchaToken = formData.get("recaptchaToken") as string // 1. Recupera il token
   
   if (!email) {
     return { error: "Email richiesta" }
   }
 
-  // ✅ NUOVO: Usa OTP invece di link
-  // Questo invierà un codice a 6 cifre via email
+  const origin = (await headers()).get('origin')
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: undefined, // ⚠️ NON usiamo redirect, vogliamo solo OTP
+    redirectTo: `${origin}/auth/callback`, 
+    captchaToken: recaptchaToken, 
   })
 
   if (error) {
     console.error("Errore invio OTP reset:", error.message)
-    return { success: true } // Non rivelare se email esiste
+    
+    // Se fallisce il captcha, ha senso avvisare l'utente di riprovare
+    if (error.message.includes("captcha")) {
+        return { error: "Verifica di sicurezza fallita. Ricarica la pagina e riprova." }
+    }
+    
+    // Per altri errori, fingiamo il successo per non rivelare se l'email esiste
+    return { success: true } 
   }
 
   return { success: true }
@@ -207,30 +217,31 @@ export async function verifyOTPAndResetPassword(formData: FormData) {
     return { error: "Tutti i campi sono richiesti" }
   }
 
-  if (password.length < 8) {
-    return { error: "La password deve essere di almeno 8 caratteri" }
-  }
-
-  // 1. Verifica OTP
+  // 1. Verifica l'OTP
   const { data, error: verifyError } = await supabase.auth.verifyOtp({
     email,
     token,
-    type: 'recovery' // ⚠️ IMPORTANTE: tipo 'recovery' per reset password
+    type: 'recovery' 
   })
 
-  if (verifyError || !data.session) {
+  // Se c'è un errore di verifica, fermati subito
+  if (verifyError) {
     return { error: "Codice non valido o scaduto" }
   }
 
-  // 2. Aggiorna password
+  // 2. IMPORTANTE: A questo punto l'utente è loggato. 
+  // Se updateuser fallisce, è perché la sessione non è stata propagata bene nel server client.
   const { error: updateError } = await supabase.auth.updateUser({
     password: password,
   })
 
   if (updateError) {
-    return { error: "Errore durante l'aggiornamento della password" }
+    console.error("Errore UpdateUser:", updateError.message)
+    return { error: "Sessione stabilita, ma errore nel cambio password. Riprova il login." }
   }
 
+  // 3. Opzionale: Dopo il reset, conviene fare il logout o reindirizzare
+  // perché l'utente ha ora una sessione attiva.
   return { success: true }
 }
 

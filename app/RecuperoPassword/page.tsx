@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { forgotPassword, verifyOTPAndResetPassword } from "@/app/actions/auth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Turnstile } from "@marsidev/react-turnstile";
 
 export default function RecuperoPassword() {
   const router = useRouter();
@@ -15,6 +16,21 @@ export default function RecuperoPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
   const [alertType, setAlertType] = useState<"error" | "success">("error");
+  const [resendTimer, setResendTimer] = useState(0);
+
+  useEffect(() => {
+  let interval: NodeJS.Timeout;
+  if (resendTimer > 0) {
+    interval = setInterval(() => {
+      setResendTimer((prev) => prev - 1);
+    }, 1000);
+  }
+  return () => clearInterval(interval);
+}, [resendTimer]);
+
+  // Stati per il Captcha
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<any>(null);
 
   const showAlert = (msg: string, type: "error" | "success" = "error") => {
     setAlertMsg(msg);
@@ -40,27 +56,40 @@ export default function RecuperoPassword() {
       return;
     }
 
+    if (!captchaToken) {
+      showAlert("Completa il controllo di sicurezza per procedere");
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const formData = new FormData();
       formData.append("email", email);
+      formData.append("recaptchaToken", captchaToken);
 
       const result = await forgotPassword(formData);
 
       if (result?.error) {
         showAlert(result.error);
+        turnstileRef.current?.reset();
+        setCaptchaToken(null);
       } else {
         showAlert(
           "Se hai un account registrato con questa email, riceverai un codice a breve. Controlla anche la cartella spam.",
           "success"
         );
         setStep("otp");
+        setResendTimer(40);
       }
     } catch (error) {
-      showAlert("Errore di connessione");
+      showAlert("Errore di connessione con il server");
+      turnstileRef.current?.reset();
+      setCaptchaToken(null);
     } finally {
       setIsSubmitting(false);
     }
   };
+
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +130,7 @@ export default function RecuperoPassword() {
         setTimeout(() => router.push("/Login"), 2000);
       }
     } catch (error) {
-      showAlert("Errore di connessione");
+      showAlert("Errore di connessione con il server");
       setIsSubmitting(false);
     }
   };
@@ -116,7 +145,6 @@ export default function RecuperoPassword() {
         />
       </div>
 
-      {/* ALERT */}
       {alertMsg && (
         <div
           className={`fixed z-50 top-4 left-1/2 -translate-x-1/2 px-4 py-3 rounded-lg font-semibold shadow-lg max-w-md ${
@@ -129,7 +157,6 @@ export default function RecuperoPassword() {
 
       <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-10 w-full max-w-md relative z-20 mb-15">
         {step === "email" ? (
-          // STEP 1: Richiedi codice
           <>
             <h1 className="text-3xl font-bold text-blue-deep mb-2 text-center">
               Recupera Password
@@ -151,13 +178,24 @@ export default function RecuperoPassword() {
                 />
               </div>
 
+              <div className="flex justify-center mt-4">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  options={{
+                    theme: "light",
+                  }}
+                />
+              </div>
+
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || !captchaToken}
                 className={`w-full bg-cyan-600 text-white py-3 rounded-lg shadow-md 
                   hover:-translate-y-1 hover:shadow-xl hover:bg-cyan-700 hover:cursor-pointer
                   transition-all duration-300 ease-out font-semibold
-                  ${isSubmitting ? "opacity-60 cursor-not-allowed" : ""}`}
+                  ${(isSubmitting || !captchaToken) ? "opacity-60 cursor-not-allowed" : ""}`}
               >
                 {isSubmitting ? "Invio in corso..." : "Invia Codice di Verifica"}
               </button>
@@ -178,14 +216,13 @@ export default function RecuperoPassword() {
               </p>
             </div>
 
-            {/* Info Box */}
             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-gray-700">
               <p className="font-semibold text-blue-900 mb-2">📧 Come funziona:</p>
               <ol className="list-decimal list-inside space-y-1 text-xs">
-                <li>Inserisci la tua email e clicca "Invia"</li>
+                <li>Inserisci la tua email e risolvi il captcha</li>
                 <li>Riceverai un codice di 8 cifre via email</li>
                 <li>Inserisci il codice e la nuova password</li>
-                <li>Accedi con la nuova password</li>
+                <li>Accedi con le nuove credenziali</li>
               </ol>
               <p className="mt-2 text-xs text-gray-600">
                 ⏱️ Il codice è valido per 1 ora
@@ -193,7 +230,6 @@ export default function RecuperoPassword() {
             </div>
           </>
         ) : (
-          // STEP 2: Inserisci codice e nuova password
           <>
             <button
               onClick={() => setStep("email")}
@@ -259,7 +295,6 @@ export default function RecuperoPassword() {
                 />
               </div>
 
-              {/* Requisiti password */}
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-xs">
                 <p className="font-semibold text-gray-700 mb-2">La password deve contenere:</p>
                 <ul className="space-y-1 text-gray-600">
@@ -291,14 +326,27 @@ export default function RecuperoPassword() {
             </form>
 
             <div className="mt-4 text-center">
-              <button
-                onClick={handleSendOTP}
-                disabled={isSubmitting}
-                className="text-cyan-600 text-sm hover:underline disabled:opacity-50"
-              >
-                Non hai ricevuto il codice? Invia di nuovo
-              </button>
-            </div>
+  <button
+    onClick={() => {
+      if (resendTimer === 0) {
+        setCaptchaToken(null);
+        setStep("email");
+        showAlert("Completa di nuovo il Captcha per reinviare l'email", "success");
+      }
+    }}
+    disabled={isSubmitting || resendTimer > 0} // Disabilitato se il timer è attivo
+    type="button"
+    className={`text-sm font-semibold transition-colors ${
+      resendTimer > 0 
+        ? "text-gray-400 cursor-not-allowed" 
+        : "text-cyan-600 hover:underline cursor-pointer"
+    }`}
+  >
+    {resendTimer > 0 
+      ? `Puoi riprovare tra ${resendTimer}s` 
+      : "Non hai ricevuto il codice? Riprova"}
+  </button>
+</div>
 
             <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-xs text-gray-700">
               <p className="font-semibold mb-2">💡 Nota:</p>
