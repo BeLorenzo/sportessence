@@ -32,7 +32,7 @@ const pdfStyles = StyleSheet.create({
   tableCell: { margin: 2, fontSize: 10, color: '#4b5563' }
 });
 
-const ContattiPDF = ({ data, campName }) => (
+const ContattiPDF = ({ data, campName } : any ) => (
   <Document>
     <Page size="A4" style={pdfStyles.page}>
       <Text style={pdfStyles.title}>Lista Contatti - {campName}</Text>
@@ -45,7 +45,7 @@ const ContattiPDF = ({ data, campName }) => (
           <View style={[pdfStyles.tableColHeader, { width: '35%' }]}><Text style={pdfStyles.tableCellHeader}>Email</Text></View>
         </View>
         {/* RIGHE DATI */}
-        {data.map((row, i) => (
+        {data.map((row : any, i : any) => (
           <View style={pdfStyles.tableRow} key={i} wrap={false}>
             <View style={[pdfStyles.tableCol, { width: '25%' }]}><Text style={pdfStyles.tableCell}>{row.genitore}</Text></View>
             <View style={[pdfStyles.tableCol, { width: '25%' }]}><Text style={pdfStyles.tableCell}>{row.bambino}</Text></View>
