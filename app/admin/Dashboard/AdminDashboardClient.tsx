@@ -182,14 +182,47 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
 
   // --- 4. STATISTICHE AVANZATE ---
   const stats = useMemo(() => {
-    const totalRevenue = filteredData.reduce((acc, curr) => acc + (curr.pagato || 0), 0);
-    const totalPotential = filteredData.reduce((acc, curr) => acc + (curr.prezzo_totale || 0), 0);
-    const pendingAmount = totalPotential - totalRevenue;
+    const isWeekFiltered = filters.weekDate !== "ALL";
+    const BASE_WEEK_PRICE = 75;
+
+    // Se c'è il filtro settimana, calcoliamo ordini e importi in modo stimato.
+    // Altrimenti usiamo il calcolo esatto globale basato sull'iscrizione intera.
+    let totalRevenue = 0;
+    let totalPotential = 0;
+    let pendingAmount = 0;
+    let paidOrders = 0;
+    let unpaidOrders = 0;
+
+    if (isWeekFiltered) {
+      // Calcolo STIMATO per singola settimana
+      filteredData.forEach(e => {
+        // Guardiamo se questa iscrizione risulta saldata in generale
+        const isPaid = (e.pagato || 0) + 0.1 >= (e.prezzo_totale || 0);
+        if (isPaid) {
+          paidOrders++;
+          totalRevenue += BASE_WEEK_PRICE;
+        } else {
+          unpaidOrders++;
+          pendingAmount += BASE_WEEK_PRICE;
+        }
+        totalPotential += BASE_WEEK_PRICE;
+      });
+    } else {
+      // Calcolo REALE per l'intero carrello
+      filteredData.forEach(e => {
+        const isPaid = (e.pagato || 0) + 0.1 >= (e.prezzo_totale || 0);
+        isPaid ? paidOrders++ : unpaidOrders++;
+      });
+      totalRevenue = filteredData.reduce((acc, curr) => acc + (curr.pagato || 0), 0);
+      totalPotential = filteredData.reduce((acc, curr) => acc + (curr.prezzo_totale || 0), 0);
+      pendingAmount = totalPotential - totalRevenue;
+    }
+
     const uniqueChildren = new Set(filteredData.map(e => e.children?.id)).size;
     
     const weeksSold = filteredData.reduce((acc, curr) => {
       if (!curr.enrollment_weeks) return acc;
-      if (filters.weekDate === "ALL") {
+      if (!isWeekFiltered) {
         return acc + curr.enrollment_weeks.length;
       } else {
         const matchingWeeks = curr.enrollment_weeks.filter((ew: any) => {
@@ -210,19 +243,13 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
           tshirtSizes[child.taglia_maglietta] = (tshirtSizes[child.taglia_maglietta] || 0) + 1;
         }
         if (e.hasMedicalIssues && Array.isArray(child.intolleranze)) {
-          // Evita duplicati se lo stesso bambino è in più righe
+          // Evita duplicati
           const alreadyExists = allergiesList.some(item => item.child.id === child.id);
           if (!alreadyExists) {
              allergiesList.push({ child, intolleranze: child.intolleranze });
           }
         }
       }
-    });
-
-    let paidOrders = 0, unpaidOrders = 0;
-    filteredData.forEach(e => {
-      const isPaid = (e.pagato || 0) + 0.1 >= (e.prezzo_totale || 0);
-      isPaid ? paidOrders++ : unpaidOrders++;
     });
 
     return { 
@@ -235,7 +262,8 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
       allergiesList, 
       allergiesCount: allergiesList.length,
       paidOrders,
-      unpaidOrders
+      unpaidOrders,
+      isWeekFiltered // Passiamo questo flag al render per cambiare le label
     };
   }, [filteredData, filters.weekDate]);
 
@@ -998,14 +1026,14 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           <StatCard
             icon={CreditCard}
-            label="Incassato"
+            label={stats.isWeekFiltered ? "Incassato (Stimato)" : "Incassato"}
             value={`€ ${stats.totalRevenue.toLocaleString()}`}
             subtext={`Su € ${stats.totalPotential.toLocaleString()}`}
             color="green"
           />
           <StatCard
             icon={TrendingUp}
-            label="Da Incassare"
+            label={stats.isWeekFiltered ? "Da Incassare (Stimato)" : "Da Incassare"}
             value={`€ ${stats.pendingAmount.toLocaleString()}`}
             subtext={`${stats.unpaidOrders} ordini da saldare`}
             color="orange"
