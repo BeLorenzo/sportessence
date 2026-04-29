@@ -9,7 +9,7 @@ import {
   Baby, Shirt, AlertTriangle, X,
   MapPin, Download, Loader2, Trash2
 } from "lucide-react";
-import { pdf } from '@react-pdf/renderer';
+import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import { PresenzePDF } from '../../components/PresenzePDF'; 
 import { registerPayment, updateEnrollmentDetails, deleteEnrollment } from "../actions";
 
@@ -20,6 +20,43 @@ type DashboardProps = {
   weeks: any[]; 
   profiles: any[];
 };
+
+const pdfStyles = StyleSheet.create({
+  page: { padding: 30, fontSize: 10 },
+  title: { fontSize: 16, marginBottom: 20, fontWeight: 'bold', textAlign: 'center', color: '#1e3a8a' },
+  table: { display: 'flex', width: 'auto', borderStyle: 'solid', borderWidth: 1, borderColor: '#d1d5db', borderRightWidth: 0, borderBottomWidth: 0 },
+  tableRow: { margin: 'auto', flexDirection: 'row' },
+  tableColHeader: { width: '25%', borderStyle: 'solid', borderColor: '#d1d5db', borderBottomWidth: 1, borderRightWidth: 1, backgroundColor: '#f3f4f6', padding: 5 },
+  tableCol: { width: '25%', borderStyle: 'solid', borderColor: '#d1d5db', borderBottomWidth: 1, borderRightWidth: 1, padding: 5 },
+  tableCellHeader: { margin: 2, fontSize: 10, fontWeight: 'bold', color: '#374151' },
+  tableCell: { margin: 2, fontSize: 10, color: '#4b5563' }
+});
+
+const ContattiPDF = ({ data, campName }) => (
+  <Document>
+    <Page size="A4" style={pdfStyles.page}>
+      <Text style={pdfStyles.title}>Lista Contatti - {campName}</Text>
+      <View style={pdfStyles.table}>
+        {/* INTESTAZIONI */}
+        <View style={pdfStyles.tableRow}>
+          <View style={[pdfStyles.tableColHeader, { width: '25%' }]}><Text style={pdfStyles.tableCellHeader}>Genitore</Text></View>
+          <View style={[pdfStyles.tableColHeader, { width: '25%' }]}><Text style={pdfStyles.tableCellHeader}>Bambino</Text></View>
+          <View style={[pdfStyles.tableColHeader, { width: '15%' }]}><Text style={pdfStyles.tableCellHeader}>Telefono</Text></View>
+          <View style={[pdfStyles.tableColHeader, { width: '35%' }]}><Text style={pdfStyles.tableCellHeader}>Email</Text></View>
+        </View>
+        {/* RIGHE DATI */}
+        {data.map((row, i) => (
+          <View style={pdfStyles.tableRow} key={i} wrap={false}>
+            <View style={[pdfStyles.tableCol, { width: '25%' }]}><Text style={pdfStyles.tableCell}>{row.genitore}</Text></View>
+            <View style={[pdfStyles.tableCol, { width: '25%' }]}><Text style={pdfStyles.tableCell}>{row.bambino}</Text></View>
+            <View style={[pdfStyles.tableCol, { width: '15%' }]}><Text style={pdfStyles.tableCell}>{row.telefono}</Text></View>
+            <View style={[pdfStyles.tableCol, { width: '35%' }]}><Text style={pdfStyles.tableCell}>{row.email}</Text></View>
+          </View>
+        ))}
+      </View>
+    </Page>
+  </Document>
+);
 
 export default function AdminDashboardClient({ enrollments, camps, profiles }: DashboardProps) {
   const router = useRouter();
@@ -43,6 +80,7 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
     status: "ALL",
     prePost: "ALL",
   });
+
 
   // --- 1. ARRICCHIMENTO DATI ---
   const enrichedEnrollments = useMemo(() => {
@@ -235,7 +273,72 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
     }));
   }, [activeModal.type, activeModal.enrollmentId, enrichedEnrollments, selectedEnrollment]);
 
-  // --- FUNZIONE GENERAZIONE PDF ---
+  //PDF Contatti
+  const handleGenerateContattiPDF = async () => {
+    if (filters.campId === "ALL") {
+      alert("Seleziona un campo specifico prima di generare la lista contatti");
+      return;
+    }
+
+    setIsGeneratingPDF(true);
+
+    try {
+      const campInfo = camps.find(c => c.id === filters.campId);
+      
+      // Partiamo con tutti gli iscritti di quel campo
+      let currentData = enrichedEnrollments.filter(e => e.camps?.id === filters.campId);
+      let titleSuffix = "";
+
+      // Se c'è una settimana selezionata, filtriamo ulteriormente
+      if (filters.weekDate !== "ALL") {
+        currentData = currentData.filter(e =>
+          e.enrollment_weeks?.some((ew: any) => {
+            const rawDate = ew.camp_weeks?.data_inizio;
+            return rawDate && new Date(rawDate).toISOString().split('T')[0] === filters.weekDate;
+          })
+        );
+        // Recuperiamo il nome della settimana per metterlo nel titolo del PDF
+        const weekInfo = uniqueWeeksOptions.find((w: any) => w.value === filters.weekDate);
+        if (weekInfo) {
+           titleSuffix = ` - ${weekInfo.fullLabel}`;
+        }
+      }
+      
+      // Estraiamo solo i campi necessari
+      const rawData = currentData.map(e => ({
+          bambino: `${e.children?.nome || ''} ${e.children?.cognome || ''}`.trim(),
+          genitore: `${e.parent?.nome || ''} ${e.parent?.cognome || ''}`.trim(),
+          telefono: e.parent?.telefono || 'N/D',
+          email: e.parent?.email || 'N/D'
+      }));
+
+      // Rimuoviamo i duplicati
+      const uniqueData = Array.from(new Map(rawData.map(item => [item.bambino, item])).values())
+        .sort((a, b) => a.bambino.localeCompare(b.bambino));
+
+      const pdfTitle = `${campInfo?.nome || 'Campo'}${titleSuffix}`;
+
+      const blob = await pdf(<ContattiPDF data={uniqueData} campName={pdfTitle} />).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      // Nome file dinamico, così non ti confondi se lo scarichi per tutto il campo o per una sola settimana
+      link.download = `Contatti_${pdfTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("Errore generazione PDF Contatti:", error);
+      alert("Errore durante la generazione del PDF dei contatti.");
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+
+  // --- FUNZIONE GENERAZIONE PDF PRESENZE ---
   const handleGeneratePDF = async () => {
     if (filters.campId === "ALL") {
       alert("Seleziona un campo specifico prima di generare il PDF");
@@ -993,6 +1096,16 @@ export default function AdminDashboardClient({ enrollments, camps, profiles }: D
                 >
                   {isGeneratingPDF ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
                   <span>PDF Presenze</span>
+                </button>
+              )}
+              {filters.campId !== "ALL" && (
+                <button 
+                  onClick={handleGenerateContattiPDF}
+                  disabled={isGeneratingPDF}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg border border-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                {isGeneratingPDF ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
+                  <span>PDF Contatti</span>
                 </button>
               )}
               {(filters.campId !== "ALL" || filters.weekDate !== "ALL" || filters.status !== "ALL" || filters.prePost !== "ALL" || searchTerm) && (
