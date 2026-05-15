@@ -104,10 +104,19 @@ function IscrizioneContent() {
     if (!childObj || !childObj.data_nascita) return camps;
 
     const birthYear = new Date(childObj.data_nascita).getFullYear();
+    const currentYear = new Date().getFullYear();
+
+    // Età di riferimento per il Baby Camp: dai 3 ai 6 anni compiuti nell'anno del camp
+    const minAge = 3;
+    const maxAge = 6;
+    
+    // Anni di nascita validi calcolati dinamicamente
+    const maxBirthYear = currentYear - minAge; // es. 2026 - 3 = 2023
+    const minBirthYear = currentYear - maxAge; // es. 2026 - 6 = 2020
 
     return camps.filter(camp => {
       if (camp.nome.toLowerCase().includes("capiago intimiano baby camp")) {
-        return birthYear >= 2021 && birthYear <= 2023;
+        return birthYear >= minBirthYear && birthYear <= maxBirthYear;
       }
       return true;
     });
