@@ -1,4 +1,5 @@
 import { createClient } from "@/app/utils/supabase/server";
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from "next/navigation";
 import AdminDashboardClient from "./AdminDashboardClient";
 
@@ -6,29 +7,61 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function AdminDashboardPage() {
-  const supabase = await createClient();
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
   
-   // A. Campi (Verifica che 'membership_type' esista nel DB!)
-  const { data: camps, error: campError } = await supabase
+  if (!user || user.app_metadata?.role !== 'admin') {
+     redirect('/');
+  }
+
+  const supabaseAdmin = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, 
+    { auth: { persistSession: false } }
+  );
+
+  // A. Campi 
+  const { data: camps, error: campError } = await supabaseAdmin
     .from('camps')
-    .select('id, nome') 
-    .order('nome');
+    .select(`
+      id, 
+      nome, 
+      indirizzo_paese, 
+      sibling_discount_value, 
+      sibling_discount_week_price,
+      price_half_day, 
+      price_pre, 
+      price_post, 
+      price_pre_post_bundle,
+      camp_weeks (id, label, data_inizio, data_fine),
+      camp_pricing_tiers (price_per_week, min_weeks, discount_percent)
+  `).order('nome');
   
   if (campError) console.error("Errore Campi:", campError);
 
+  const formattedCamps = (camps || []).map((c: any) => ({
+    ...c,
+    prezzo_base_indicativo: c.camp_pricing_tiers?.sort((a:any, b:any) => a.min_weeks - b.min_weeks)[0]?.price_per_week || 0
+  }));
+
   // B. Settimane
-  const { data: weeks } = await supabase
+  const { data: weeks } = await supabaseAdmin
     .from('camp_weeks')
     .select('id, camp_id, label, data_inizio, data_fine')
     .order('data_inizio');
 
   // C. Profili Genitori
-  const { data: profiles } = await supabase
+  const { data: profiles } = await supabaseAdmin
     .from('profiles')
-    .select('id, nome, cognome, email, telefono, indirizzo_via, indirizzo_civico, indirizzo_paese, indirizzo_cap');
+    .select('id, nome, cognome, email, telefono, indirizzo_via, indirizzo_civico, indirizzo_paese, indirizzo_cap, cf, email_contatti');
+
+  // ---> NUOVO: ESTRAIAMO TUTTI I BAMBINI <---
+  const { data: childrenData } = await supabaseAdmin
+    .from('children')
+    .select('*');
 
   // D. Iscrizioni
-  const { data: enrollments, error: enrollError } = await supabase
+  const { data: enrollments, error: enrollError } = await supabaseAdmin
     .from('enrollments')
     .select(`
       *,
@@ -56,9 +89,10 @@ export default async function AdminDashboardPage() {
 
         <AdminDashboardClient 
             enrollments={enrollments || []} 
-            camps={camps || []}
+            camps={formattedCamps || []}
             weeks={weeks || []}
             profiles={profiles || []}
+            childrenData={childrenData || []} // Passiamo i bambini
         />
       </div>
     </div>
