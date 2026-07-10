@@ -27,6 +27,7 @@ type QuoteDetail = {
   is_full: boolean;
   extraPrice: number; 
   is_new?: boolean;
+  created_at?: string; // Aggiunto per il fix temporale
 };
 
 type Camp = { 
@@ -58,13 +59,13 @@ type ExistingBooking = {
   camp_week_id: string;
   type: 'FULL' | 'HALF';
   prePost: 'NONE' | 'PRE' | 'POST' | 'BOTH';
+  created_at?: string; // Aggiunto per il fix temporale
 };
 
 function IscrizioneContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
-
 
   const [children, setChildren] = useState<Child[]>([]);
   const [camps, setCamps] = useState<Camp[]>([]);
@@ -77,7 +78,9 @@ function IscrizioneContent() {
   const [bookedWeeks, setBookedWeeks] = useState<ExistingBooking[]>([]);
   const [bookedWeekIds, setBookedWeekIds] = useState<string[]>([]);
   const [alreadyBilledAmount, setAlreadyBilledAmount] = useState(0);
+  
   const [siblingWeekIds, setSiblingWeekIds] = useState<Set<string>>(new Set());
+  const [siblingWeekDates, setSiblingWeekDates] = useState<Record<string, string>>({}); // Aggiunto per il fix temporale
 
   const [weekSelections, setWeekSelections] = useState<Record<string, {
     selected: boolean,
@@ -89,7 +92,6 @@ function IscrizioneContent() {
   const [isPromoApplied, setIsPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState("");
 
-  // NUOVO STATO PER TERMINI E CONDIZIONI
   const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [priceQuote, setPriceQuote] = useState<LocalQuote | null>(null);
@@ -106,13 +108,11 @@ function IscrizioneContent() {
     const birthYear = new Date(childObj.data_nascita).getFullYear();
     const currentYear = new Date().getFullYear();
 
-    // Età di riferimento per il Baby Camp: dai 3 ai 6 anni compiuti nell'anno del camp
     const minAge = 3;
     const maxAge = 6;
     
-    // Anni di nascita validi calcolati dinamicamente
-    const maxBirthYear = currentYear - minAge; // es. 2026 - 3 = 2023
-    const minBirthYear = currentYear - maxAge; // es. 2026 - 6 = 2020
+    const maxBirthYear = currentYear - minAge;
+    const minBirthYear = currentYear - maxAge; 
 
     return camps.filter(camp => {
       if (camp.nome.toLowerCase().includes("capiago intimiano baby camp")) {
@@ -126,9 +126,8 @@ function IscrizioneContent() {
   const isCastelloCamp = currentCampObj?.nome.toLowerCase().includes("castello");
   const isMuliniCamp = currentCampObj?.nome.toLowerCase().includes("uggiate");
 
-const currentPromoCode = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_MULINI : "";
-const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_MULINI : 0;
-
+  const currentPromoCode = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CODICE_MULINI : "";
+  const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_CANTU : isMuliniCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI_MULINI : 0;
 
   useEffect(() => {
     const initData = async () => {
@@ -171,6 +170,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
           setBookedWeeks([]); 
           setBookedWeekIds([]);
           setSiblingWeekIds(new Set());
+          setSiblingWeekDates({});
           setAlreadyBilledAmount(0);
           return; 
       }
@@ -181,13 +181,13 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
       // A. MIEI DATI
       const { data: myEnrollments } = await supabase.from('enrollments')
         .select(`
-            id, prezzo_totale, stato,
+            id, prezzo_totale, stato, created_at,
             enrollment_weeks (camp_week_id, type, pre_post)
         `)
         .eq('child_id', selectedChild)
         .eq('camp_id', selectedCamp)
         .in('stato', ['CONFIRMED', 'COMPLETED', 'PENDING', 'saldato', 'acconto'])
-        .gte('created_at', startOfYear);;
+        .gte('created_at', startOfYear);
       
       let pastWeeks: ExistingBooking[] = [];
       let pastTotal = 0;
@@ -201,7 +201,8 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                       pastWeeks.push({
                           camp_week_id: ew.camp_week_id,
                           type: ew.type,
-                          prePost: ew.pre_post
+                          prePost: ew.pre_post,
+                          created_at: e.created_at // <-- Salviamo la data
                       });
                       pastIds.push(ew.camp_week_id);
                   });
@@ -225,8 +226,18 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
         .gte('enrollments.created_at', startOfYear);
 
       const siblingSet = new Set<string>();
-      siblingsData?.forEach((row: any) => siblingSet.add(row.camp_week_id));
+      const siblingDates: Record<string, string> = {};
+
+      siblingsData?.forEach((row: any) => {
+          siblingSet.add(row.camp_week_id);
+          const cDate = row.enrollments.created_at;
+          // Salviamo la data di iscrizione più vecchia del fratello per quella settimana
+          if (!siblingDates[row.camp_week_id] || new Date(cDate) < new Date(siblingDates[row.camp_week_id])) {
+              siblingDates[row.camp_week_id] = cDate;
+          }
+      });
       setSiblingWeekIds(siblingSet);
+      setSiblingWeekDates(siblingDates);
     };
 
     fetchHistory();
@@ -236,7 +247,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
     if (selectedCamp && selectedChild) {
       const isValid = availableCamps.some(c => c.id === selectedCamp);
       if (!isValid) {
-        handleCampChange(""); // Resetta istantaneamente se il campo non è più valido per l'età
+        handleCampChange(""); 
       }
     }
   }, [selectedChild, availableCamps, selectedCamp]);
@@ -250,7 +261,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
     setErrorMsg(null);
     setPromoCode("");
     setIsPromoApplied(false);
-    setAcceptTerms(false); // Reset checkbox quando cambia campo
+    setAcceptTerms(false); 
   };
 
   const toggleWeek = (weekId: string) => {
@@ -269,17 +280,17 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
   const applyPromoCode = () => {
     if (!currentPromoCode) return;
     if (promoCode.trim().toUpperCase() === currentPromoCode.toUpperCase()) {
-    setIsPromoApplied(true);
-    setPromoError("");
-  } else {
-    setIsPromoApplied(false);
-    setPromoError("Codice non valido");
-  }
+      setIsPromoApplied(true);
+      setPromoError("");
+    } else {
+      setIsPromoApplied(false);
+      setPromoError("Codice non valido");
+    }
   };
 
   const isWeekBooked = (wid: string) => bookedWeekIds.includes(wid);
 
-  // --- CALCOLO LOCALE (CON LOGICA VISIVA SCONTI) ---
+  // --- CALCOLO LOCALE ---
   useEffect(() => {
     if (!selectedCamp || !selectedChild) return;
     
@@ -296,8 +307,12 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
         return;
       }
 
-      const newWeeksDetails = selectedIds.map(wid => ({ week_id: wid, ...weekSelections[wid], is_new: true }));
-      const oldWeeksDetails = bookedWeeks.map(bw => ({ week_id: bw.camp_week_id, type: bw.type, prePost: bw.prePost, selected: true, is_new: false }));
+      const newWeeksDetails = selectedIds.map(wid => ({ week_id: wid, ...weekSelections[wid], is_new: true, created_at: undefined }));
+      // Passiamo il created_at ai dettagli vecchi per il check temporale
+      const oldWeeksDetails = bookedWeeks.map(bw => ({ 
+          week_id: bw.camp_week_id, type: bw.type, prePost: bw.prePost, 
+          selected: true, is_new: false, created_at: bw.created_at 
+      }));
       
       const allWeeks = [...oldWeeksDetails, ...newWeeksDetails];
       const fullWeeks = allWeeks.filter(w => w.type === 'FULL');
@@ -309,10 +324,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
       
       const activeTierObj = [...sortedTiers].reverse().find(t => numFullWeeks >= t.min_weeks);
       
-      // Prezzo base standard (Tier 1) per confronto visivo
       const baseStandardPrice = campObj.prezzo_base_indicativo;
-
-      // Prezzo Tier Applicato
       let tierBasePrice = activeTierObj?.price_per_week || baseStandardPrice;
       const discountPercentTier = activeTierObj?.discount_percent || 0;
 
@@ -338,32 +350,37 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
               price = campObj.price_half_day;
               originalPrice = campObj.price_half_day;
           } else {
-              // FULL
-              originalPrice = baseStandardPrice; // Prezzo di partenza standard (1 settimana)
+              originalPrice = baseStandardPrice;
               
-              // Verifica Overlap Fratelli
-              const hasOverlap = siblingWeekIds.has(w.week_id);
+              // Verifica Overlap Fratelli 
+              const hasOverlapRaw = siblingWeekIds.has(w.week_id);
+              let hasOverlap = hasOverlapRaw;
+
+              // Check Temporale: se è una settimana passata, vediamo CHI si è iscritto prima
+              if (hasOverlapRaw && !w.is_new && w.created_at && siblingWeekDates[w.week_id]) {
+                  const myDate = new Date(w.created_at);
+                  const sibDate = new Date(siblingWeekDates[w.week_id]);
+                  // Se il fratello si è iscritto DOPO di me, non c'era sconto. Non ricalcolarlo.
+                  if (sibDate > myDate) {
+                      hasOverlap = false; 
+                  }
+              }
               
               if (hasOverlap && campObj.sibling_discount_week_price > 0) {
-                  // CASO A: Prezzo Fisso Fratelli
                   price = campObj.sibling_discount_week_price;
                   discountReason = "Sconto Fratello";
               } else {
-                  // CASO B: Tier Standard
                   price = discountedTierPrice;
                   
                   if (discountPercentTier > 0) {
                       discountReason = `Tier ${activeTierObj?.min_weeks} sett.`;
                   }
 
-                  // CASO C: Sconto % Fratelli (Accumulato)
                   if (hasOverlap) {
                       if (campObj.sibling_discount_value > 0 && campObj.sibling_discount_value <= 1) {
-                          // Sconto Percentuale (es. 0.10 = 10% a settimana)
                           grandSiblingDiscount += price * campObj.sibling_discount_value;
                           discountReason = discountReason ? `${discountReason} + Fratello` : "Sconto Fratello";
                       } else if (campObj.sibling_discount_value > 1) {
-                          // Sconto Assoluto (es. 20€ a settimana)
                           grandSiblingDiscount += Number(campObj.sibling_discount_value);
                           discountReason = discountReason ? `${discountReason} + Fratello` : "Sconto Fratello";
                       }
@@ -381,14 +398,13 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
           return { 
               ...w, 
               price, 
-              originalPrice, // Salviamo il prezzo originale per il confronto visivo
+              originalPrice,
               discountReason,
               extraPrice: extra, 
               is_full: w.type === 'FULL' 
           };
       });
 
-      // Sconto Promo
       let grandPromoDiscount = 0;
       if (isPromoApplied) {
        grandPromoDiscount = grandTuition * Number(currentPromoValue); 
@@ -415,14 +431,13 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [selectedCamp, selectedChild, weekSelections, bookedWeeks, alreadyBilledAmount, isPromoApplied, camps, siblingWeekIds, currentPromoValue]);
+  }, [selectedCamp, selectedChild, weekSelections, bookedWeeks, alreadyBilledAmount, isPromoApplied, camps, siblingWeekIds, siblingWeekDates, currentPromoValue]);
 
   // Invio Dati
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!priceQuote) return;
     
-    // VALIDAZIONE TERMINI
     if (!acceptTerms) {
         setErrorMsg("Devi accettare il regolamento per procedere.");
         return;
@@ -475,10 +490,7 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* COLONNA SINISTRA */}
         <div className="lg:col-span-8 space-y-8">
-          {/* ... (Selettori Bambino/Camp rimangono uguali) ... */}
           <div className="bg-white p-8 rounded-[2rem] shadow-sm border border-gray-100">
             <h2 className="font-bold text-xl mb-6 flex items-center gap-3 text-blue-deep"><span className="bg-blue-100 p-2 rounded-lg text-blue-600"><Users size={20}/></span>Dati Principali</h2>
             <div className="grid md:grid-cols-2 gap-6">
@@ -556,7 +568,6 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
           )}
         </div>
 
-        {/* COLONNA DESTRA */}
         <div className="lg:col-span-4">
           <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-gray-100 sticky top-8 flex flex-col h-fit">
             <h3 className="font-bold text-xl text-blue-deep mb-6 flex items-center gap-2 border-b border-gray-100 pb-4"><Euro size={22} className="text-cyan-600"/> Riepilogo</h3>
@@ -570,7 +581,6 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                   {priceQuote.details.map((d:any) => {
                     const weekObj = weeks.find(w => w.id === d.week_id);
-                    // --- LOGICA VISUALIZZAZIONE SCONTO PER RIGA ---
                     const showDiscount = d.is_full && d.price < d.originalPrice;
                     
                     return (
@@ -578,7 +588,6 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                            <div className="w-full">
                                <div className="flex justify-between">
                                    <span className="font-bold text-gray-700 block mb-1">{weekObj?.label}</span>
-                                   {/* Etichetta Sconto */}
                                    {showDiscount && (
                                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold h-fit">
                                             {d.discountReason || "Sconto serie settimane"}
@@ -588,11 +597,9 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                                
                                <div className="flex flex-col gap-0.5 text-xs text-gray-500">
                                    <div className="flex items-center gap-2">
-                                       {/* PREZZO BARRATO */}
                                        {showDiscount && (
                                            <span className="line-through text-gray-400">€{d.originalPrice}</span>
                                        )}
-                                       {/* PREZZO REALE */}
                                        <span className="font-bold text-gray-800">
                                             €{d.price} {d.is_full ? "" : "(Mezza)"}
                                        </span>
@@ -635,7 +642,6 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                     <div className="text-white"><p className="text-xs uppercase tracking-wider opacity-80 mb-0.5">Da Saldare Ora</p><p className="text-xs opacity-70">(Bonifico)</p></div>
                     <span className="text-3xl font-extrabold text-white">€{priceQuote.total.toFixed(2)}</span>
                   </div>
-                
 
                   {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs flex gap-2 border border-red-100"><AlertTriangle size={14}/> {errorMsg}</div>}
 
@@ -651,7 +657,6 @@ const currentPromoValue = isCastelloCamp ? process.env.NEXT_PUBLIC_SCONTO_FEDELI
                     {submitting ? <><Loader2 className="animate-spin" size={20}/> Elaborazione...</> : <>Conferma Iscrizione <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform"/></>}
                   </button>
 
-                  {/* CHECKBOX REGOLAMENTO (SOTTO IL BOTTONE) */}
                   <div className="mt-4 flex justify-center">
                     <label className="flex items-start gap-2 cursor-pointer opacity-90 hover:opacity-100 transition-opacity select-none">
                        <input 
